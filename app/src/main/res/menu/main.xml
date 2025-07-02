@@ -1,0 +1,9 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- optional: leer lassen oder Beispiel -->
+    <item
+        android:id="@+id/action_settings"
+        android:title="Einstellungen"
+        android:orderInCategory="100"
+        app:showAsAction="never" />
+</menu>

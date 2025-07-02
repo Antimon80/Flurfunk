@@ -1,0 +1,49 @@
+<resources>
+    <string name="app_name">Flurfunk</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+
+    <string name="app_title">Flurfunk</string>
+    <string name="app_subtitle">Die Flohmarkt-App für deine Hausgemeinschaft!</string>
+    <string name="network_description">Bitte trage deine Adresse ein. Du wirst automatisch im LoRa-Mesh-Netzwerk deiner Hausgemeinschaft registriert, wenn du ein Benutzerprofil erstellst.</string>
+    <string name="hint_street">Strasse</string>
+    <string name="hint_number">Nr.</string>
+    <string name="hint_zip">PLZ</string>
+    <string name="hint_city">Ort</string>
+
+
+    <string name="profile_description">Bitte gib deinen Namen und dein Stockwerk ein. Optional kannst du auch deine Telefonnummer oder eMail-Adresse angeben.</string>
+    <string name="hint_name">Name</string>
+    <string name="hint_floor">Stockwerk</string>
+    <string name="hint_phone">Telefonnummer (optional)</string>
+    <string name="hint_email">E-Mail (optional)</string>
+    <string name="button_create_profile">Profil erstellen</string>
+
+    <string name="title">Titel</string>
+    <string name="description">Beschreibung</string>
+    <string name="category">Kategorie</string>
+    <string name="create_offer">Angebot erstellen</string>
+    <string name="floor">Etage:</string>
+    <string name="contact">Kontakt:</string>
+    <string name="offerer">Anbieter:</string>
+
+    <string name="contact_email">E-Mail:</string>
+    <string name="contact_phone">Telefon:</string>
+
+    <string name="contact_unknown">Keine Kontaktdaten verfügbar</string>
+    <string name="unknown_floor">Unbekanntes Stockwerk</string>
+    <string name="unknown_user">Unbekannter Nutzer</string>
+
+    <string name="phone_label">Tel.: %1$s</string>
+    <string name="email_label">Mail: %1$s</string>
+    <string name="floor_label">%1$s</string>
+    <string name="no_contact">Keine Kontaktdaten</string>
+    <string name="unknown_offerer">Unbekannter Anbieter</string>
+
+</resources>

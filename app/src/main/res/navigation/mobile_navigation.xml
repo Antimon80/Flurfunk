@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@id/nav_category_electronics">
+
+    <!-- Elektronik -->
+    <fragment
+        android:id="@+id/nav_category_electronics"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Elektronik"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="ELECTRONICS"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Möbel -->
+    <fragment
+        android:id="@+id/nav_category_furniture"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Möbel"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="FURNITURE"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Haushalt -->
+    <fragment
+        android:id="@+id/nav_category_household"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Haushalt"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="HOUSEHOLD"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Spielzeug -->
+    <fragment
+        android:id="@+id/nav_category_toys"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Spielzeug"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="TOYS"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Werkzeug -->
+    <fragment
+        android:id="@+id/nav_category_tools"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Werkzeug"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="TOOLS"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Bücher -->
+    <fragment
+        android:id="@+id/nav_category_books"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Bücher"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="BOOKS"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Kleidung -->
+    <fragment
+        android:id="@+id/nav_category_clothing"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Kleidung"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="CLOTHING"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Fahrzeuge -->
+    <fragment
+        android:id="@+id/nav_category_vehicles"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Fahrzeuge"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="VEHICLES"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Sonstiges -->
+    <fragment
+        android:id="@+id/nav_category_misc"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Sonstiges"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="MISC"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Meine Angebote -->
+    <fragment
+        android:id="@+id/nav_my_offers"
+        android:name="com.example.flurfunk.ui.fragments.OfferListFragment"
+        android:label="Meine Angebote"
+        tools:layout="@layout/fragment_offer_list">
+        <argument
+            android:name="category"
+            android:defaultValue="MY_OFFERS"
+            app:argType="string" />
+    </fragment>
+
+    <!-- Angebotsdetails -->
+    <fragment
+        android:id="@+id/nav_offer_detail"
+        android:name="com.example.flurfunk.ui.fragments.OfferDetailFragment"
+        android:label="Angebotsdetails"
+        tools:layout="@layout/fragment_offer_detail">
+        <argument
+            android:name="offerId"
+            app:argType="string"
+            app:nullable="false" />
+    </fragment>
+
+    <!-- Einstellungen -->
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="com.example.flurfunk.ui.fragments.SettingsFragment"
+        android:label="Einstellungen"
+        tools:layout="@layout/fragment_settings" />
+
+    <!-- Impressum -->
+    <fragment
+        android:id="@+id/nav_about"
+        android:name="com.example.flurfunk.ui.fragments.AboutFragment"
+        android:label="Impressum"
+        tools:layout="@layout/fragment_about" />
+</navigation>

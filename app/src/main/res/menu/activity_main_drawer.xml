@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_category_electronics"
+            android:icon="@drawable/ic_electronics"
+            android:title="Elektronik" />
+
+        <item
+            android:id="@+id/nav_category_furniture"
+            android:icon="@drawable/ic_furniture"
+            android:title="Möbel" />
+
+        <item
+            android:id="@+id/nav_category_household"
+            android:icon="@drawable/ic_household"
+            android:title="Haushalt" />
+
+        <item
+            android:id="@id/nav_category_toys"
+            android:icon="@drawable/ic_toys"
+            android:title="Spielzeug"/>
+
+        <item
+            android:id="@+id/nav_category_tools"
+            android:icon="@drawable/ic_tools"
+            android:title="Werkzeug" />
+
+        <item
+            android:id="@+id/nav_category_books"
+            android:icon="@drawable/ic_books"
+            android:title="Bücher" />
+
+        <item
+            android:id="@+id/nav_category_clothing"
+            android:icon="@drawable/ic_clothing"
+            android:title="Kleidung" />
+
+        <item
+            android:id="@id/nav_category_vehicles"
+            android:icon="@drawable/ic_vehicles"
+            android:title="Fahrzeuge" />
+
+        <item
+            android:id="@+id/nav_category_misc"
+            android:icon="@drawable/ic_misc"
+            android:title="Sonstiges" />
+
+
+        <item
+            android:id="@+id/nav_my_offers"
+            android:icon="@drawable/ic_my_offers"
+            android:title="Meine Angebote" />
+
+        <item
+            android:id="@+id/nav_settings"
+            android:icon="@drawable/ic_settings"
+            android:title="Einstellungen" />
+
+        <item
+            android:id="@+id/nav_about"
+            android:icon="@drawable/ic_about"
+            android:title="Impressum"/>
+    </group>
+</menu>
