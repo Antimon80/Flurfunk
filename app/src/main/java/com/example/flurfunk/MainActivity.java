@@ -17,7 +17,6 @@ import com.example.flurfunk.network.PeerSyncManager;
 import com.example.flurfunk.network.LoRaManager;
 import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.ui.activities.ProfileSetupActivity;
-import com.example.flurfunk.util.Protocol;
 import com.google.android.material.navigation.NavigationView;
 
 import androidx.activity.EdgeToEdge;
@@ -34,12 +33,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.flurfunk.databinding.ActivityMainBinding;
 
-import org.json.JSONArray;
-
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * The main activity of the Flurfunk app, launched after a user profile has been set up.
@@ -82,8 +76,7 @@ public class MainActivity extends AppCompatActivity {
                 List<String> neighborIds = PeerManager.getPeerIdsWithMeshId(MainActivity.this, meshId);
 
                 try {
-                    String peerMsg = dispatcher.getPeerSyncManager().sendPeerSync();
-                    dispatcher.getLoRaManager().sendMessageTo("broadcast", peerMsg);
+                    dispatcher.getPeerSyncManager().sendPeerSync("broadcast");
                     Log.d(TAG, "Broadcast peer sync sent.");
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to build peer sync payload", e);

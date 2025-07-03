@@ -122,6 +122,10 @@ public class MessageDispatcher {
                 peerSyncManager.handlePeerData(parsed);
                 break;
 
+            case Protocol.USRDEL:
+                peerSyncManager.handleUserDeletion(parsed);
+                break;
+
             default:
                 Log.w(TAG, "Unknown protocol command from " + senderId + ": " + command);
         }

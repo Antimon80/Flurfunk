@@ -119,6 +119,7 @@ public class OfferDetailFragment extends Fragment {
                         : Constants.OfferStatus.ACTIVE;
 
                 offer.setStatus(newStatus);
+                offer.setLastModified(System.currentTimeMillis());
 
                 List<Offer> allOffers = OfferManager.loadOffers(requireContext());
                 OfferManager.updateOrAdd(allOffers, offer);

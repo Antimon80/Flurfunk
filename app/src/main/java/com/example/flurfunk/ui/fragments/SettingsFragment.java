@@ -21,6 +21,7 @@ import com.example.flurfunk.MainActivity;
 import com.example.flurfunk.R;
 import com.example.flurfunk.model.UserProfile;
 import com.example.flurfunk.network.LoRaManager;
+import com.example.flurfunk.network.PeerSyncManager;
 import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.ui.activities.ProfileSetupActivity;
 import com.example.flurfunk.util.Protocol;
@@ -96,19 +97,17 @@ public class SettingsFragment extends Fragment {
                     .setPositiveButton("Ja", (dialog, which) -> {
                         try {
                             LoRaManager loRaManager = ((MainActivity) requireActivity()).getDispatcher().getLoRaManager();
+                            PeerSyncManager peerSyncManager = new PeerSyncManager(context, profile, loRaManager);
+                            peerSyncManager.sendUserDeletion();
 
-                            Map<String, String> payload = new HashMap<>();
-                            payload.put(Protocol.KEY_UID, profile.getId());
-                            payload.put(Protocol.KEY_MID, profile.getMeshId());
-                            payload.put(Protocol.KEY_TS, String.valueOf(System.currentTimeMillis()));
+                            Log.i(TAG, "Deletion broadcast sent for profile " + profile.getId());
 
-                            String message = Protocol.build(Protocol.USRDEL, payload);
-                            loRaManager.sendMessageTo("broadcast", message);
                         } catch (Exception e) {
                             Log.e(TAG, "Failed to broadcast profile deletion", e);
                         }
 
                         UserProfile.deleteProfileFile(context);
+
                         Intent intent = new Intent(context, ProfileSetupActivity.class);
                         startActivity(intent);
                         requireActivity().finish();

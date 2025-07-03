@@ -15,11 +15,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Manages the synchronization of peer {@link UserProfile} data across nearby devices using LoRa communication.
@@ -38,6 +40,7 @@ public class PeerSyncManager {
     private final Context context;
     private final UserProfile localProfile;
     private final LoRaManager loRaManager;
+    private static final int MAX_LORA_BYTES = 960;
     private static final String TAG = "PeerSyncManager";
 
     /**
@@ -53,17 +56,57 @@ public class PeerSyncManager {
         this.loRaManager = loRaManager;
     }
 
-    public String sendPeerSync(){
-        JSONArray peers = buildPeerList();
+    public void sendPeerSync(String peerId) {
+        List<UserProfile> allPeers = PeerManager.loadPeers(context);
+        JSONArray chunk = new JSONArray();
 
-        Map<String, String> peerPayload = new HashMap<>();
-        peerPayload.put(Protocol.KEY_ID, UUID.randomUUID().toString());
-        peerPayload.put(Protocol.KEY_UID, localProfile.getId());
-        peerPayload.put(Protocol.KEY_MID, localProfile.getMeshId());
-        peerPayload.put(Protocol.KEY_HOP, "1");
-        peerPayload.put(Protocol.KEY_PRS, peers.toString());
+        for (UserProfile peer : allPeers) {
+            if (!peer.getMeshId().equals(localProfile.getMeshId())) {
+                continue;
+            }
+            if (!PeerManager.isPeerActive(peer)) {
+                continue;
+            }
 
-        return Protocol.build(Protocol.SYNPR, peerPayload);
+            try {
+                JSONObject summary = new JSONObject();
+                summary.put(Protocol.KEY_UID, peer.getId());
+                summary.put(Protocol.KEY_TS, peer.getTimestamp());
+                chunk.put(summary);
+
+                Map<String, String> payload = new HashMap<>();
+                payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
+                payload.put(Protocol.KEY_UID, localProfile.getId());
+                payload.put(Protocol.KEY_MID, localProfile.getMeshId());
+                payload.put(Protocol.KEY_HOP, "1");
+                payload.put(Protocol.KEY_PRS, chunk.toString());
+
+                String message = Protocol.build(Protocol.SYNPR, payload);
+
+                if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
+                    chunk.remove(chunk.length() - 1);
+
+                    payload.put(Protocol.KEY_PRS, chunk.toString());
+                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.SYNPR, payload));
+
+                    chunk = new JSONArray().put(summary);
+                }
+            } catch (JSONException e) {
+                Log.e(TAG, "Error while preparing peer sync", e);
+            }
+        }
+
+        if (chunk.length() > 0) {
+            Map<String, String> payload = new HashMap<>();
+            payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
+            payload.put(Protocol.KEY_UID, localProfile.getId());
+            payload.put(Protocol.KEY_MID, localProfile.getMeshId());
+            payload.put(Protocol.KEY_HOP, "1");
+            payload.put(Protocol.KEY_PRS, chunk.toString());
+
+            loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.SYNPR, payload));
+        }
+
     }
 
     /**
@@ -97,28 +140,33 @@ public class PeerSyncManager {
      * @param msg      the parsed protocol message
      */
     public void handlePeerList(String senderId, ParsedMessage msg) {
-        if (!localProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) return;
-
-        List<UserProfile> local = PeerManager.loadPeers(context);
-        Map<String, UserProfile> localMap = new HashMap<>();
-        for (UserProfile profile : local) {
-            localMap.put(profile.getId(), profile);
+        if (!localProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) {
+            Log.i(TAG, "Ignored peer sync from different mesh");
+            return;
         }
 
-        List<String> missing = new ArrayList<>();
         try {
             JSONArray remote = new JSONArray(msg.getValue(Protocol.KEY_PRS));
-            for (int i = 0; i < remote.length(); i++) {
-                JSONObject object = remote.getJSONObject(i);
-                String id = object.getString(Protocol.KEY_UID);
-                long ts = object.getLong(Protocol.KEY_TS);
+            List<UserProfile> localPeers = PeerManager.loadPeers(context);
+            Map<String, UserProfile> localMap = new HashMap<>();
+            for (UserProfile profile : localPeers) {
+                localMap.put(profile.getId(), profile);
+            }
 
-                UserProfile peer = localMap.get(id);
-                if (peer == null || peer.getTimestamp() < ts) {
-                    missing.add(id);
+            List<String> toRequest = new ArrayList<>();
+
+            for (int i = 0; i < remote.length(); i++) {
+                JSONObject remotePeer = remote.getJSONObject(i);
+                String id = remotePeer.getString(Protocol.KEY_UID);
+                long ts = remotePeer.getLong(Protocol.KEY_TS);
+
+                if (!localMap.containsKey(id) || localMap.get(id).getTimestamp() < ts) {
+                    toRequest.add(id);
                 }
             }
-            if (!missing.isEmpty()) sendPeerRequest(senderId, missing);
+            if (!toRequest.isEmpty()) {
+                sendPeerRequest(senderId, toRequest);
+            }
         } catch (JSONException e) {
             Log.e(TAG, "Failed to parse peer list", e);
         }
@@ -128,23 +176,41 @@ public class PeerSyncManager {
      * Sends a {@code REQPR} peer request message to a peer,
      * requesting full profiles for the specified peer IDs.
      *
-     * @param peerId the ID of the peer to request from
-     * @param ids    the list of peer IDs to request
+     * @param peerId  the ID of the peer to request from
+     * @param peerIds the list of peer IDs to request
      */
-    private void sendPeerRequest(String peerId, List<String> ids) {
+    private void sendPeerRequest(String peerId, List<String> peerIds) {
+        JSONArray chunk = new JSONArray();
+
         try {
-            JSONArray array = new JSONArray();
-            for (String id : ids) array.put(id);
+            for (int i = 0; i < peerIds.size(); i++) {
+                chunk.put(peerIds.get(i));
 
-            Map<String, String> payload = new HashMap<>();
-            payload.put(Protocol.KEY_ID, java.util.UUID.randomUUID().toString());
-            payload.put(Protocol.KEY_MID, localProfile.getMeshId());
-            payload.put(Protocol.KEY_REQ, array.toString());
+                Map<String, String> payload = new HashMap<>();
+                payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
+                payload.put(Protocol.KEY_UID, localProfile.getId());
+                payload.put(Protocol.KEY_MID, localProfile.getMeshId());
+                payload.put(Protocol.KEY_REQ, chunk.toString());
 
-            String message = Protocol.build(Protocol.REQPR, payload);
-            loRaManager.sendMessageTo(peerId, message);
+                String message = Protocol.build(Protocol.REQPR, payload);
+
+                if (message.getBytes(StandardCharsets.UTF_8).length > 960) {
+                    chunk.remove(chunk.length() - 1);
+
+                    payload.put(Protocol.KEY_REQ, chunk.toString());
+                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.REQPR, payload));
+
+                    chunk = new JSONArray().put(peerIds.get(i));
+                }
+
+                if (i == peerIds.size() - 1 && chunk.length() > 0) {
+                    payload.put(Protocol.KEY_REQ, chunk.toString());
+                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.REQPR, payload));
+                }
+            }
+
         } catch (Exception e) {
-            Log.e(TAG, "Failed to send peer request", e);
+            Log.e(TAG, "Failed to build REQPR message", e);
         }
     }
 
@@ -187,23 +253,33 @@ public class PeerSyncManager {
      * @param profiles the list of peer profiles to send
      */
     private void sendPeerData(String peerId, List<UserProfile> profiles) {
-        try {
-            JSONArray array = new JSONArray();
-            for (UserProfile peer : profiles) {
-                array.put(peer.toJsonForNetwork());
-            }
+        JSONArray chunk = new JSONArray();
+
+        for (int i = 0; i < profiles.size(); i++) {
+            JSONObject obj = profiles.get(i).toJsonForNetwork();
+            chunk.put(obj);
 
             Map<String, String> payload = new HashMap<>();
-            payload.put(Protocol.KEY_ID, java.util.UUID.randomUUID().toString());
+            payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
             payload.put(Protocol.KEY_UID, localProfile.getId());
             payload.put(Protocol.KEY_MID, localProfile.getMeshId());
-            payload.put(Protocol.KEY_PFD, array.toString());
+            payload.put(Protocol.KEY_PFD, chunk.toString());
 
             String message = Protocol.build(Protocol.PRDAT, payload);
-            loRaManager.sendMessageTo(peerId, message);
 
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to send peer data", e);
+            if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
+                chunk.remove(chunk.length() - 1);
+
+                payload.put(Protocol.KEY_PFD, chunk.toString());
+                loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.PRDAT, payload));
+
+                chunk = new JSONArray().put(obj);
+            }
+
+            if (i == profiles.size() - 1 && chunk.length() > 0) {
+                payload.put(Protocol.KEY_PFD, chunk.toString());
+                loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.PRDAT, payload));
+            }
         }
     }
 
@@ -239,7 +315,7 @@ public class PeerSyncManager {
         }
     }
 
-    private void handleUserDeletion(ParsedMessage msg) {
+    public void handleUserDeletion(ParsedMessage msg) {
         String deletedUserId = msg.getValue(Protocol.KEY_UID);
         String meshId = msg.getValue(Protocol.KEY_MID);
 
@@ -263,5 +339,15 @@ public class PeerSyncManager {
         } else {
             Log.i(TAG, "User deletion received for " + deletedUserId + ", no active offers found.");
         }
+    }
+
+    public void sendUserDeletion() {
+        Map<String, String> payload = new HashMap<>();
+        payload.put(Protocol.KEY_ID , String.format("%016x", ThreadLocalRandom.current().nextLong()));
+        payload.put(Protocol.KEY_UID, localProfile.getId());
+        payload.put(Protocol.KEY_MID, localProfile.getMeshId());
+
+        String message = Protocol.build(Protocol.USRDEL, payload);
+        loRaManager.sendMessageTo("broadcast", message);
     }
 }

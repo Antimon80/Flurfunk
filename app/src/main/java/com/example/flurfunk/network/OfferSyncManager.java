@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Responsible for synchronizing offer data between nearby devices using LoRa communication.
@@ -69,7 +69,7 @@ public class OfferSyncManager {
                 chunk.put(offerList.get(i));
 
                 Map<String, String> payload = new HashMap<>();
-                payload.put(Protocol.KEY_ID, UUID.randomUUID().toString());
+                payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
                 payload.put(Protocol.KEY_UID, userProfile.getId());
                 payload.put(Protocol.KEY_MID, userProfile.getMeshId());
                 payload.put(Protocol.KEY_HOP, "1");
@@ -174,7 +174,7 @@ public class OfferSyncManager {
                 chunk.put(offerIds.get(i));
 
                 Map<String, String> payload = new HashMap<>();
-                payload.put(Protocol.KEY_ID, UUID.randomUUID().toString());
+                payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
                 payload.put(Protocol.KEY_UID, userProfile.getId());
                 payload.put(Protocol.KEY_MID, userProfile.getMeshId());
                 payload.put(Protocol.KEY_REQ, chunk.toString());
@@ -227,7 +227,7 @@ public class OfferSyncManager {
                 String requestedId = requested.getString(i);
                 Offer offer = offersById.get(requestedId);
 
-                if (offer == null || offer.getStatus() == Constants.OfferStatus.INACTIVE) {
+                if (offer == null) {
                     continue;
                 }
                 JSONObject obj = new JSONObject();
@@ -241,7 +241,7 @@ public class OfferSyncManager {
                 chunk.put(obj);
 
                 Map<String, String> payload = new HashMap<>();
-                payload.put(Protocol.KEY_ID, UUID.randomUUID().toString());
+                payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
                 payload.put(Protocol.KEY_UID, userProfile.getId());
                 payload.put(Protocol.KEY_MID, userProfile.getMeshId());
                 payload.put(Protocol.KEY_OFA, chunk.toString());

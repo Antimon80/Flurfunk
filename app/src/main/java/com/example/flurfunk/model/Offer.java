@@ -2,7 +2,7 @@ package com.example.flurfunk.model;
 
 import com.example.flurfunk.util.Constants.*;
 
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Represents an offer in the Flurfunk application.
@@ -42,7 +42,7 @@ public class Offer {
      * @param creatorId   the ID of the user who created the offer
      */
     public Offer(String title, String description, Category category, String creatorId) {
-        this.offerId = UUID.randomUUID().toString();
+        this.offerId = String.format("%016x", ThreadLocalRandom.current().nextLong());
         this.title = title;
         this.description = description;
         this.category = category;

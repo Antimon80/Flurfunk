@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Represents a user's profile in the Flurfunk application.
@@ -34,10 +34,6 @@ public class UserProfile {
 
     private String id;
     private String name;
-    private String city;
-    private String zipCode;
-    private String street;
-    private String houseNumber;
     private String floor;
     private String phone;
     private String email;
@@ -68,11 +64,7 @@ public class UserProfile {
     public UserProfile(
             String street, String houseNumber, String zipCode, String city,
             String name, String floor, String phone, String email) {
-        this.street = street;
-        this.houseNumber = houseNumber;
-        this.zipCode = zipCode;
-        this.city = city;
-        this.id = UUID.randomUUID().toString();
+        this.id = String.format("%016x", ThreadLocalRandom.current().nextLong());
         this.name = name;
         this.floor = floor;
         this.phone = phone;
