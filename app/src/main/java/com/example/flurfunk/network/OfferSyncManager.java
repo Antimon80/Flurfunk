@@ -6,6 +6,7 @@ import android.util.Log;
 import com.example.flurfunk.model.Offer;
 import com.example.flurfunk.model.UserProfile;
 import com.example.flurfunk.store.OfferManager;
+import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.util.Constants;
 import com.example.flurfunk.util.Protocol;
 import com.example.flurfunk.util.Protocol.ParsedMessage;
@@ -58,7 +59,7 @@ public class OfferSyncManager {
      * Sends a synchronization message to all peers with the same address.
      * This message contains a summary (ID and timestamp) of all local offers.
      */
-    public void sendOfferSync(String peerId) {
+    public void sendOfferSync() {
         deactivateOutdatedOffers();
 
         JSONArray offerList = buildOfferList();
@@ -72,7 +73,6 @@ public class OfferSyncManager {
                 payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
                 payload.put(Protocol.KEY_UID, userProfile.getId());
                 payload.put(Protocol.KEY_MID, userProfile.getMeshId());
-                payload.put(Protocol.KEY_HOP, "1");
                 payload.put(Protocol.KEY_OFF, chunk.toString());
 
                 String message = Protocol.build(Protocol.SYNOF, payload);
@@ -81,35 +81,39 @@ public class OfferSyncManager {
                     chunk.remove(chunk.length() - 1);
 
                     payload.put(Protocol.KEY_OFF, chunk.toString());
-                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.SYNOF, payload));
+                    Log.d(TAG, "SYNOF lagrger than 960 B - " + Protocol.build(Protocol.SYNOF, payload));
+                    loRaManager.sendBroadcast(Protocol.build(Protocol.SYNOF, payload));
 
                     chunk = new JSONArray().put(offerList.get(i));
                 }
 
                 if (i == offerList.length() - 1 && chunk.length() > 0) {
                     payload.put(Protocol.KEY_OFF, chunk.toString());
-                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.SYNOF, payload));
+                    Log.d(TAG, "SYNOF smaller than 960 B - " + Protocol.build(Protocol.SYNOF, payload));
+                    loRaManager.sendBroadcast(Protocol.build(Protocol.SYNOF, payload));
                 }
             }
         } catch (JSONException e) {
             Log.w(TAG, "Failed to build SYNOF message");
         }
-
     }
 
     public JSONArray buildOfferList() {
         JSONArray offerSummaries = new JSONArray();
         List<Offer> localOffers = OfferManager.loadOffers(context);
         for (Offer offer : localOffers) {
-            if (offer.getStatus() != Constants.OfferStatus.INACTIVE) {
-                try {
-                    JSONObject summary = new JSONObject();
-                    summary.put(Protocol.KEY_OID, offer.getOfferId());
-                    summary.put(Protocol.KEY_TS, offer.getLastModified());
-                    offerSummaries.put(summary);
-                } catch (JSONException e) {
-                    Log.w(TAG, "Failed to build offer list");
-                }
+            UserProfile peer = PeerManager.getPeerById(context, offer.getCreatorId());
+            if (peer != null && !PeerManager.isPeerActive(peer)) {
+                continue;
+            }
+
+            try {
+                JSONObject summary = new JSONObject();
+                summary.put(Protocol.KEY_OID, offer.getOfferId());
+                summary.put(Protocol.KEY_TS, offer.getLastModified());
+                offerSummaries.put(summary);
+            } catch (JSONException e) {
+                Log.w(TAG, "Failed to build offer list");
             }
         }
         return offerSummaries;
@@ -119,10 +123,9 @@ public class OfferSyncManager {
      * Handles a received sync message by comparing remote offer summaries to local offers
      * and sending a request for any missing or outdated offers.
      *
-     * @param senderId the ID of the sending peer
      * @param msg      the parsed sync message
      */
-    public void handleSyncMessage(String senderId, ParsedMessage msg) {
+    public void handleSyncMessage(ParsedMessage msg) {
         if (!userProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) {
             Log.w(TAG, "Rejected sync message due to different mesh-ID: " + userProfile.getMeshId() + "(local)" + msg.getValue(Protocol.KEY_MID) + "(incoming)");
         }
@@ -152,7 +155,7 @@ public class OfferSyncManager {
             }
 
             if (!missing.isEmpty()) {
-                sendOfferRequest(senderId, missing);
+                sendOfferRequest(missing);
                 Log.i(TAG, "Sending offer request");
             }
         } catch (JSONException e) {
@@ -163,10 +166,9 @@ public class OfferSyncManager {
     /**
      * Sends a request to a peer asking for the full data of the specified offer IDs.
      *
-     * @param peerId   the ID of the peer to request from
      * @param offerIds the list of offer IDs to request
      */
-    public void sendOfferRequest(String peerId, List<String> offerIds) {
+    public void sendOfferRequest(List<String> offerIds) {
         JSONArray chunk = new JSONArray();
 
         try {
@@ -185,14 +187,16 @@ public class OfferSyncManager {
                     chunk.remove(chunk.length() - 1);
 
                     payload.put(Protocol.KEY_REQ, chunk.toString());
-                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.REQOF, payload));
+                    Log.d(TAG, "REQOF larger than 960 B - " + Protocol.build(Protocol.REQOF, payload));
+                    loRaManager.sendBroadcast(Protocol.build(Protocol.REQOF, payload));
 
                     chunk = new JSONArray().put(offerIds.get(i));
                 }
 
                 if (i == offerIds.size() - 1 && chunk.length() > 0) {
                     payload.put(Protocol.KEY_REQ, chunk.toString());
-                    loRaManager.sendMessageTo(peerId, Protocol.build(Protocol.REQOF, payload));
+                    Log.d(TAG, "REQOF smaller than 960 B - " + Protocol.build(Protocol.REQOF, payload));
+                    loRaManager.sendBroadcast(Protocol.build(Protocol.REQOF, payload));
                 }
             }
         } catch (Exception e) {
@@ -204,10 +208,9 @@ public class OfferSyncManager {
      * Handles a request from a peer for specific offers.
      * Responds with full offer data, sent either as individual messages or in bulk.
      *
-     * @param senderId the ID of the requesting peer
      * @param msg      the parsed offer request message
      */
-    public void handleOfferRequest(String senderId, ParsedMessage msg) {
+    public void handleOfferRequest(ParsedMessage msg) {
         if (!userProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) {
             Log.i(TAG, "OfferRequest rejected due to different Mesh-ID: " + msg.getValue(Protocol.KEY_MID));
             return;
@@ -246,20 +249,22 @@ public class OfferSyncManager {
                 payload.put(Protocol.KEY_MID, userProfile.getMeshId());
                 payload.put(Protocol.KEY_OFA, chunk.toString());
 
-                String message = Protocol.build(Protocol.OFALL, payload);
+                String message = Protocol.build(Protocol.OFDAT, payload);
 
                 if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
                     chunk.remove(chunk.length() - 1);
 
                     payload.put(Protocol.KEY_OFA, chunk.toString());
-                    loRaManager.sendMessageTo(senderId, Protocol.build(Protocol.OFALL, payload));
+                    Log.d(TAG, "OFDAT larger than 960 B - " + Protocol.build(Protocol.OFDAT, payload));
+                    loRaManager.sendBroadcast(Protocol.build(Protocol.OFDAT, payload));
 
                     chunk = new JSONArray();
                 }
 
                 if (i == requested.length() - 1 && chunk.length() > 0) {
                     payload.put(Protocol.KEY_OFA, chunk.toString());
-                    loRaManager.sendMessageTo(senderId, Protocol.build(Protocol.OFALL, payload));
+                    Log.d(TAG, "OFDAT smaller than 960 B - " + Protocol.build(Protocol.OFDAT, payload));
+                    loRaManager.sendBroadcast(Protocol.build(Protocol.OFDAT, payload));
                 }
             }
 
@@ -277,17 +282,11 @@ public class OfferSyncManager {
     public void handleOfferData(ParsedMessage msg) {
         try {
             List<Offer> current = OfferManager.loadOffers(context);
-
-            if (msg.command.equals(Protocol.OFDAT)) {
-                JSONObject data = new JSONObject(msg.getValue(Protocol.KEY_OFD));
-                importOffer(data, current);
-            } else if (msg.command.equals(Protocol.OFALL)) {
                 JSONArray array = new JSONArray(msg.getValue(Protocol.KEY_OFA));
                 for (int i = 0; i < array.length(); i++) {
                     JSONObject data = array.getJSONObject(i);
                     importOffer(data, current);
                 }
-            }
 
             OfferManager.saveOffers(context, current);
             Log.i(TAG, "Saving incoming offer data");

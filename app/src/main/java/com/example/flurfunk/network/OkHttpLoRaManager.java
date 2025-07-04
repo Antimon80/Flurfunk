@@ -4,6 +4,7 @@ import android.util.Log;
 
 import java.io.IOException;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -36,17 +37,17 @@ public class OkHttpLoRaManager implements LoRaManager {
 
 
     private final OkHttpClient client = new OkHttpClient();
-    private BiConsumer<String, String> onMessageReceived;
+    private Consumer<String> onMessageReceived;
 
     private final StringBuilder httpBuffer = new StringBuilder();
     private volatile boolean running = false;
     /**
      * Sets the handler that will be called whenever a new message is received from the proxy.
      *
-     * @param listener a {@link BiConsumer} that takes sender ID and message string
+     * @param listener a {@link Consumer} that takes a message string
      */
     @Override
-    public void setOnMessageReceived(BiConsumer<String, String> listener) {
+    public void setOnMessageReceived(Consumer<String> listener) {
         this.onMessageReceived = listener;
     }
 
@@ -54,11 +55,10 @@ public class OkHttpLoRaManager implements LoRaManager {
      * Sends a message to the proxy by POSTing it to {@code /send}.
      * The message is suffixed with {@code ;EOM} if not already present.
      *
-     * @param peerId  the peer ID (ignored in emulator)
      * @param message the protocol-formatted message string
      */
     @Override
-    public void sendMessageTo(String peerId, String message) {
+    public void sendBroadcast(String message) {
         if (!message.endsWith(";EOM")) {
             message += ";EOM";
         }
@@ -119,7 +119,7 @@ public class OkHttpLoRaManager implements LoRaManager {
 
                                 try {
                                     if (onMessageReceived != null) {
-                                        onMessageReceived.accept("proxy", fullMessage);
+                                        onMessageReceived.accept(fullMessage);
                                     }
                                 } catch (IllegalArgumentException e) {
                                     Log.w(TAG, "Invalid protocol message: " + fullMessage, e);

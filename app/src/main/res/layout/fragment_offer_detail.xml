@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="20dp"
             android:text="@string/description"
-            android:textSize="20sp"/>
+            android:textSize="20sp" />
 
         <!-- Anbieter -->
         <LinearLayout
@@ -50,8 +50,8 @@
                 android:id="@+id/detailName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="20sp"
-                android:layout_marginStart="10dp" />
+                android:layout_marginStart="10dp"
+                android:textSize="20sp" />
         </LinearLayout>
 
         <!-- Etage -->
@@ -72,8 +72,8 @@
                 android:id="@+id/detailFloor"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="20sp"
-                android:layout_marginStart="10dp" />
+                android:layout_marginStart="10dp"
+                android:textSize="20sp" />
         </LinearLayout>
 
         <!-- Kontakt: Telefonnummer -->
@@ -94,9 +94,9 @@
                 android:id="@+id/detailContactPhone"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="20sp"
                 android:layout_marginStart="10dp"
-                android:textColor="@color/purple_500"/>
+                android:textColor="@color/purple_500"
+                android:textSize="20sp" />
         </LinearLayout>
 
         <!-- Kontakt: E-Mail -->
@@ -118,8 +118,30 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:textColor="@color/purple_500"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <!-- Erstellungsdatum -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Erstellt am:"
                 android:textSize="20sp"
-                android:textColor="@color/purple_500"/>
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/detailCreatedAt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:textSize="20sp" />
         </LinearLayout>
 
         <Button
@@ -130,5 +152,19 @@
             android:textSize="20sp"
             android:visibility="gone" />
 
+        <Button
+            android:id="@+id/buttonHide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Angebot ausblenden"
+            android:textSize="20sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/detailAnnotation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textSize="20sp" />
     </LinearLayout>
 </ScrollView>

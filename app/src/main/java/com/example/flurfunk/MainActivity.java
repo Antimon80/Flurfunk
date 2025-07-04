@@ -15,6 +15,7 @@ import com.example.flurfunk.network.OfferSyncManager;
 import com.example.flurfunk.network.OkHttpLoRaManager;
 import com.example.flurfunk.network.PeerSyncManager;
 import com.example.flurfunk.network.LoRaManager;
+import com.example.flurfunk.store.OfferManager;
 import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.ui.activities.ProfileSetupActivity;
 import com.google.android.material.navigation.NavigationView;
@@ -55,10 +56,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private static final int START_BYTES = 100;
-    private static final int STEP_BYTES = 100;
-    private static final int MAX_BYTES = 5000;
-    private int testLen = START_BYTES;
-    private int testSeq = 0;
 
     /**
      * Periodic task that synchronizes peer and offer data every 90 seconds.
@@ -76,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
                 List<String> neighborIds = PeerManager.getPeerIdsWithMeshId(MainActivity.this, meshId);
 
                 try {
-                    dispatcher.getPeerSyncManager().sendPeerSync("broadcast");
+                    dispatcher.getPeerSyncManager().sendPeerSync();
                     Log.d(TAG, "Broadcast peer sync sent.");
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to build peer sync payload", e);
@@ -84,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (!neighborIds.isEmpty()) {
                     syncHandler.postDelayed(() -> {
-                        dispatcher.getOfferSyncManager().sendOfferSync("broadcast");
+                        dispatcher.getOfferSyncManager().sendOfferSync();
                         Log.d(TAG, "Offer sync sent");
                     }, 5000);
                 } else {
@@ -134,6 +131,9 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
+
+        OfferManager.deactivateOffersOfInactiveUsers(this);
+        Log.d(TAG, "Deactivated offers of inactive peers");
 
         // Detect if the app is running on an emulator
         boolean isEmulator =

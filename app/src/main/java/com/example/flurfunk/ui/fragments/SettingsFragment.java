@@ -84,6 +84,7 @@ public class SettingsFragment extends Fragment {
                 profile.setFloor(editFloor.getText().toString());
                 profile.setEmail(editEmail.getText().toString());
                 profile.setPhone(editPhone.getText().toString());
+                profile.updateTimestamp();
                 profile.saveToFile(context);
                 PeerManager.updateOrAddPeer(context, profile);
 

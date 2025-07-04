@@ -140,7 +140,7 @@ public class UserProfile {
     /**
      * Updates the timestamp to the current system time.
      */
-    private void updateTimestamp() {
+    public void updateTimestamp() {
         this.timestamp = System.currentTimeMillis();
     }
 

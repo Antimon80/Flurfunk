@@ -96,8 +96,6 @@ public class PeerManager {
      * @param newPeer the new or updated {@link UserProfile} to add
      */
     public static void updateOrAddPeer(Context context, UserProfile newPeer) {
-        newPeer.updateLastSeen();
-
         List<UserProfile> peers = loadPeers(context);
         for (int i = 0; i < peers.size(); i++) {
             if (peers.get(i).getId().equals(newPeer.getId())) {
@@ -128,12 +126,20 @@ public class PeerManager {
         return peer.getLastSeen() > 0 && (System.currentTimeMillis() - peer.getLastSeen() < INACTIVITY_TIMEOUT_MS);
     }
 
-    public static void markAsInactive(Context context, String peerId) {
+    /**
+     * Updates the lastSeen timestamp of a peer with the given ID.
+     * If the peer is found, its lastSeen is set and saved.
+     *
+     * @param context   the Android context used for file access
+     * @param peerId    the ID of the peer to update
+     * @param lastSeen  the new lastSeen timestamp (usually from a received SYNPR)
+     */
+    public static void updateLastSeen(Context context, String peerId, long lastSeen) {
         List<UserProfile> peers = loadPeers(context);
         boolean changed = false;
         for (UserProfile peer : peers) {
             if (peer.getId().equals(peerId)) {
-                peer.setLastSeen(0);
+                peer.setLastSeen(lastSeen);
                 changed = true;
                 break;
             }

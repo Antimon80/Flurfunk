@@ -29,13 +29,9 @@ public class Protocol {
      */
     public static final String REQOF = "REQOF";
     /**
-     * Contains the full data of a single offer.
+     * Contains the full data of all requested local offers.
      */
     public static final String OFDAT = "OFDAT";
-    /**
-     * Contains the full data of multiple offers.
-     */
-    public static final String OFALL = "OFALL";
 
     /**
      * Peer synchronization: summary of known peer profiles.
@@ -86,10 +82,6 @@ public class Protocol {
      */
     public static final String KEY_REQ = "REQ";
     /**
-     * Single full offer data.
-     */
-    public static final String KEY_OFD = "OFD";
-    /**
      * Array of full offer objects.
      */
     public static final String KEY_OFA = "OFA";
@@ -117,10 +109,6 @@ public class Protocol {
     // --- Peer-related keys ---
 
     /**
-     * Hop limit or distance in the network.
-     */
-    public static final String KEY_HOP = "HOP";
-    /**
      * Peer summaries (ID + timestamp).
      */
     public static final String KEY_PRS = "PRS";
@@ -144,6 +132,7 @@ public class Protocol {
      * Email address.
      */
     public static final String KEY_MAIL = "EML";
+    public static final String KEY_LS = "LS";
 
     /**
      * Builds a protocol message string from a command and a set of key-value pairs.

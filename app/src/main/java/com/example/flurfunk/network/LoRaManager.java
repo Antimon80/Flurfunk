@@ -1,6 +1,6 @@
 package com.example.flurfunk.network;
 
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Interface for LoRa-based message transport between peers.
@@ -10,17 +10,16 @@ public interface LoRaManager {
     /**
      * Sends a message to the given peer ID.
      *
-     * @param peerId  the recipient's unique ID
      * @param message the message content as a JSON string
      */
-    void sendMessageTo(String peerId, String message);
+    void sendBroadcast(String message);
 
     /**
      * Sets the handler for incoming messages.
      *
-     * @param handler a callback with parameters (senderPeerId, message)
+     * @param handler a callback with parameters (message)
      */
-    void setOnMessageReceived(BiConsumer<String, String> handler);
+    void setOnMessageReceived(Consumer<String> handler);
 
     /**
      * Initializes and starts the communication channel.

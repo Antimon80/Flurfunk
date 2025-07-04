@@ -22,6 +22,7 @@ public class Offer {
     private final long createdAt;
     private long lastModified;
     private OfferStatus status;
+    private boolean deleted = false;
 
     /**
      * Default constructor used for deserialization.
@@ -50,6 +51,7 @@ public class Offer {
         this.createdAt = System.currentTimeMillis();
         this.lastModified = this.createdAt;
         this.status = OfferStatus.ACTIVE;
+        this.deleted = false;
     }
 
     public String getOfferId() {
@@ -83,6 +85,9 @@ public class Offer {
     public OfferStatus getStatus() {
         return status;
     }
+    public boolean isDeleted(){
+        return deleted;
+    }
 
     public void setOfferId(String offerId) {
         this.offerId = offerId;
@@ -113,6 +118,10 @@ public class Offer {
         updateTimestamp();
     }
 
+    public void setDeleted(boolean deleted){
+        this.deleted = deleted;
+    }
+
     public void setLastModified(long lastModified) {
         this.lastModified = lastModified;
     }
@@ -137,6 +146,7 @@ public class Offer {
             this.description = other.description;
             this.category = other.category;
             this.status = other.status;
+            this.deleted = other.deleted;
             this.lastModified = other.lastModified;
         }
     }

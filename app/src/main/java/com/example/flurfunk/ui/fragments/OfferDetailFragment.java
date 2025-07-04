@@ -1,8 +1,10 @@
 package com.example.flurfunk.ui.fragments;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +23,8 @@ import com.example.flurfunk.store.OfferManager;
 import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.util.Constants;
 
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -68,9 +72,18 @@ public class OfferDetailFragment extends Fragment {
         TextView floorView = view.findViewById(R.id.detailFloor);
         TextView phoneView = view.findViewById(R.id.detailContactPhone);
         TextView emailView = view.findViewById(R.id.detailContactEmail);
+        TextView createdAtView = view.findViewById(R.id.detailCreatedAt);
+
+        TextView annotationView = view.findViewById(R.id.detailAnnotation);
+        String htmlText = "Wenn du <b>Angebot deaktivieren</b> klickst, wird das Angebot in der entsprechenden Kategorie nicht mehr angezeigt. Du kannst es aber jederzeit reaktivieren. \n\nWenn du <b>Angebot ausblenden</b> klickst verschwindet es auch aus deiner eigenen Liste. Diese Aktion kannst du nicht rückgängig machen.";
+        annotationView.setText(Html.fromHtml(htmlText, Html.FROM_HTML_MODE_LEGACY));
+        annotationView.setVisibility(View.GONE);
 
         titleView.setText(offer.getTitle());
         descriptionView.setText(offer.getDescription());
+        DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM);
+        String createdAtFormatted = dateFormat.format(new Date(offer.getCreatedAt()));
+        createdAtView.setText(createdAtFormatted);
 
         List<UserProfile> peers = PeerManager.loadPeers(requireContext());
         UserProfile creator = peers.stream().filter(peer -> peer.getId().equals(offer.getCreatorId())).findFirst().orElse(null);
@@ -105,6 +118,7 @@ public class OfferDetailFragment extends Fragment {
         }
 
         Button deactivateButton = view.findViewById(R.id.buttonDeactivate);
+        Button hideButton = view.findViewById(R.id.buttonHide);
 
         String currentUserId = UserProfile.loadFromFile(requireContext()).getId();
         boolean isOwnOffer = currentUserId.equals(offer.getCreatorId());
@@ -127,6 +141,29 @@ public class OfferDetailFragment extends Fragment {
 
                 updateButtonLabel(deactivateButton, newStatus);
             });
+
+            hideButton.setVisibility(View.VISIBLE);
+
+            hideButton.setOnClickListener(v -> {
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Angebot ausblenden")
+                        .setMessage("Willst du dieses Angebot wirklich aus deiner Liste entfernen? Diese Aktion kannst du nicht rückgängig machen.")
+                        .setPositiveButton("Ja", (dialog, which) -> {
+                            offer.setStatus(Constants.OfferStatus.INACTIVE);
+                            offer.setDeleted(true);
+                            offer.setLastModified(System.currentTimeMillis());
+
+                            List<Offer> allOffers = OfferManager.loadOffers(requireContext());
+                            OfferManager.updateOrAdd(allOffers, offer);
+                            OfferManager.saveOffers(requireContext(), allOffers);
+
+                            requireActivity().onBackPressed();
+                        })
+                        .setNegativeButton("Nein", null)
+                        .show();
+            });
+
+            annotationView.setVisibility(View.VISIBLE);
         }
     }
 

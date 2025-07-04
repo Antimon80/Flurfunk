@@ -110,6 +110,10 @@ public class OfferManager {
                 .collect(Collectors.toList());
     }
 
+    public static List<Offer> filterByDeletion(List<Offer> offers, boolean deleted){
+        return offers.stream().filter(offer -> offer.isDeleted() == deleted).collect(Collectors.toList());
+    }
+
 
     /**
      * Retrieves a single offer by its unique ID.

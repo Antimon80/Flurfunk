@@ -26,6 +26,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A fragment that displays a list of offers filtered by category.
@@ -82,14 +83,16 @@ public class OfferListFragment extends Fragment {
         if (category == Category.MY_OFFERS) {
             String myId = UserProfile.loadFromFile(requireContext()).getId();
             offers = OfferManager.filterByCreator(offers, myId);
+            offers = OfferManager.filterByDeletion(offers, false);
         } else if (category != null) {
             offers = OfferManager.filterByCategory(offers, category);
             offers = OfferManager.filterByStatus(offers, Constants.OfferStatus.ACTIVE);
+            offers = OfferManager.filterByDeletion(offers, false);
         } else {
             offers = Collections.emptyList();
         }
 
-        recyclerView.setAdapter(new OfferListAdapter(offers, requireContext()));
+        recyclerView.setAdapter(new OfferListAdapter(offers, requireContext(), category));
 
         if (offers.isEmpty()) {
             emptyView.setVisibility(View.VISIBLE);
@@ -128,14 +131,16 @@ public class OfferListFragment extends Fragment {
         if (category == Category.MY_OFFERS) {
             String myId = UserProfile.loadFromFile(requireContext()).getId();
             offers = OfferManager.filterByCreator(offers, myId);
+            offers = OfferManager.filterByDeletion(offers, false);
         } else if (category != null) {
             offers = OfferManager.filterByCategory(offers, category);
             offers = OfferManager.filterByStatus(offers, Constants.OfferStatus.ACTIVE);
+            offers = OfferManager.filterByDeletion(offers, false);
         } else {
             offers = Collections.emptyList();
         }
 
-        recyclerView.setAdapter(new OfferListAdapter(offers, requireContext()));
+        recyclerView.setAdapter(new OfferListAdapter(offers, requireContext(), category));
 
         if (offers.isEmpty()) {
             emptyView.setVisibility(View.VISIBLE);

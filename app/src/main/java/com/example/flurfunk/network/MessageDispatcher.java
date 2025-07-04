@@ -51,15 +51,14 @@ public class MessageDispatcher {
     /**
      * Entry point for all received messages.
      *
-     * @param senderId the ID of the sending peer
      * @param message  the full protocol message (e.g. "#SYNOF#ID=...;ADR=...;...")
      */
-    public void onMessageReceived(String senderId, String message) {
+    public void onMessageReceived(String message) {
         Protocol.ParsedMessage parsed;
         try {
             parsed = Protocol.parse(message);
         } catch (IllegalArgumentException e) {
-            Log.w(TAG, "Invalid protocol message from " + senderId + ": " + message);
+            Log.w(TAG, "Invalid protocol message: " + message);
             return;
         }
 
@@ -68,7 +67,6 @@ public class MessageDispatcher {
 
         String messageId = data.get(Protocol.KEY_ID);
         String meshId = data.get(Protocol.KEY_MID);
-        String hopStr = data.getOrDefault("HOP", "0");
 
         if (meshId == null || !meshId.equals(localProfile.getMeshId())) {
             Log.d(TAG, "Ignoring message for different Mesh-ID: " + meshId);
@@ -82,40 +80,22 @@ public class MessageDispatcher {
 
         if (messageId != null) seenMessageIds.add(messageId);
 
-        try {
-            int hop = Integer.parseInt(hopStr);
-            if (hop > 0) {
-                data.put("HOP", String.valueOf(hop - 1));
-                String forwarded = Protocol.build(command, data);
-
-                List<String> neighborIds = PeerManager.getPeerIdsWithMeshId(context, meshId);
-                for (String targetId : neighborIds) {
-                    if (!targetId.equals(senderId) && !targetId.equals(localProfile.getId())) {
-                        loRaManager.sendMessageTo(targetId, forwarded);
-                    }
-                }
-            }
-        } catch (NumberFormatException e) {
-            Log.w(TAG, "Invalid HOP value in message from " + senderId + ": " + hopStr);
-        }
-
         switch (command) {
             case Protocol.SYNOF:
-                offerSyncManager.handleSyncMessage(senderId, parsed);
+                offerSyncManager.handleSyncMessage(parsed);
                 break;
             case Protocol.REQOF:
-                offerSyncManager.handleOfferRequest(senderId, parsed);
+                offerSyncManager.handleOfferRequest(parsed);
                 break;
             case Protocol.OFDAT:
-            case Protocol.OFALL:
                 offerSyncManager.handleOfferData(parsed);
                 break;
 
             case Protocol.SYNPR:
-                peerSyncManager.handlePeerList(senderId, parsed);
+                peerSyncManager.handlePeerList(parsed);
                 break;
             case Protocol.REQPR:
-                peerSyncManager.handlePeerRequest(senderId, parsed);
+                peerSyncManager.handlePeerRequest(parsed);
                 break;
 
             case Protocol.PRDAT:
@@ -127,7 +107,7 @@ public class MessageDispatcher {
                 break;
 
             default:
-                Log.w(TAG, "Unknown protocol command from " + senderId + ": " + command);
+                Log.w(TAG, "Unknown protocol command: " + command);
         }
     }
 }

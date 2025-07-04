@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * LoRa-USB-Manager mit robustem Frame-Parser (SerialFrameReader).
@@ -56,7 +56,7 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
     private boolean bound = false;
     private volatile boolean isReceiving = false;
     private final BlockingQueue<String> txQueue = new LinkedBlockingQueue<>();
-    private BiConsumer<String, String> onMessageReceived;
+    private Consumer<String> onMessageReceived;
     private final SerialFrameReader frameReader;
 
 
@@ -68,12 +68,12 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
     }
 
     @Override
-    public void setOnMessageReceived(BiConsumer<String, String> handler) {
+    public void setOnMessageReceived(Consumer<String> handler){
         this.onMessageReceived = handler;
     }
 
     @Override
-    public void sendMessageTo(String peerId, String message) {
+    public void sendBroadcast(String message) {
         if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
             Log.w(TAG, "Message too large - not queued");
             return;
@@ -284,12 +284,13 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
             return;
         }
         loRaService.write(message.getBytes(StandardCharsets.UTF_8));
+        Log.d(TAG, "Message to be sent: " + message);
         Log.d(TAG, "TX → " + message.length() + " B");
     }
 
-    private void handleFrame(String src, String frame) {
+    private void handleFrame(String frame) {
         Log.i(TAG, "Full message to be parsed: " + frame);
-        if (onMessageReceived != null) onMessageReceived.accept(src, frame);
+        if (onMessageReceived != null) onMessageReceived.accept(frame);
     }
 
 
@@ -301,14 +302,14 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         private byte[] buf = new byte[1024];
         private int len = 0;
 
-        private final BiConsumer<String, String> cb;
+        private final Consumer<String> cb;
         private final CharsetDecoder dec = StandardCharsets.UTF_8.newDecoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
 
         private volatile boolean on = false;
 
-        SerialFrameReader(BiConsumer<String, String> cb) {
+        SerialFrameReader(Consumer<String> cb) {
             this.cb = cb;
         }
 
@@ -350,7 +351,7 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
                     shift(e + END.length);
                     continue;
                 }
-                cb.accept("dongle", frame);
+                cb.accept(frame);
                 shift(e + END.length);
                 scan = 0;
             }

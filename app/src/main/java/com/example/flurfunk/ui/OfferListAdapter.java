@@ -1,6 +1,7 @@
 package com.example.flurfunk.ui;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -15,6 +17,7 @@ import com.example.flurfunk.R;
 import com.example.flurfunk.model.Offer;
 import com.example.flurfunk.model.UserProfile;
 import com.example.flurfunk.store.PeerManager;
+import com.example.flurfunk.util.Constants;
 
 import java.util.List;
 
@@ -27,6 +30,7 @@ import java.util.List;
 public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.OfferViewHolder> {
     private final List<Offer> offers;
     private final Context context;
+    private Constants.Category category;
 
     /**
      * Constructs a new {@code OfferListAdapter}.
@@ -34,9 +38,10 @@ public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.Offe
      * @param offers  the list of offers to display
      * @param context the context used to access resources and inflate views
      */
-    public OfferListAdapter(List<Offer> offers, Context context) {
+    public OfferListAdapter(List<Offer> offers, Context context, Constants.Category category) {
         this.offers = offers;
         this.context = context;
+        this.category = category;
     }
 
     /**
@@ -90,6 +95,16 @@ public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.Offe
             args.putString("offerId", offer.getOfferId());
             Navigation.findNavController(v).navigate(R.id.nav_offer_detail, args);
         });
+
+        if (category == Constants.Category.MY_OFFERS) {
+            if (offer.getStatus() == Constants.OfferStatus.ACTIVE) {
+                holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.offer_green));
+            } else {
+                holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.offer_red));
+            }
+        } else {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        }
     }
 
     /**

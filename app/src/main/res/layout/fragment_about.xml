@@ -29,8 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="28dp"
-            android:text="Diese App wurde im Rahmen eines Projekts an der Universität Basel entwickelt und dient ausschliesslich zu Demonstrationszwecken. \n\nDie App wird ohne Gewähr bereitgestellt. Es besteht kein Anspruch auf Funktion, Verfügbarkeit oder Support."
-            android:textAlignment="center"
+            android:text="Diese App wurde im Rahmen eines Projekts im Bachelor-Studiengang Computer Science an der Universität Basel entwickelt und dient ausschliesslich zu Demonstrationszwecken. \n\nDie App wird ohne Gewähr bereitgestellt. Es besteht kein Anspruch auf Funktion, Verfügbarkeit oder Support. Der Quellcode steht unter der MIT-Lizenz und kann frei verwendet werden."
             android:textSize="18sp" />
 
         <!-- E-Mail -->
@@ -44,7 +43,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Kontakt:"
-                android:textColor="?android:attr/textColorPrimary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -53,9 +51,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:autoLink="email"
                 android:text="andrea.seehuber@stud.unibas.ch"
-                android:textColor="@color/purple_500"
                 android:textSize="18sp" />
         </LinearLayout>
 
@@ -69,8 +65,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Projektseite:"
-                android:textColor="?android:attr/textColorPrimary"
+                android:text="Repository:"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -79,11 +74,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:autoLink="web"
-                android:text="https://github.com/unibas-flurfunk"
+                android:text="GitHub Flurfunk"
                 android:textColor="@color/purple_500"
                 android:textSize="18sp" />
         </LinearLayout>
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_gravity="center_horizontal"
+            android:src="@drawable/flurfunk_logo"
+            android:contentDescription="@string/app_name" />
 
     </LinearLayout>
 </ScrollView>
