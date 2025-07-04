@@ -199,6 +199,20 @@ public class UserProfile {
         context.deleteFile(PROFILE_FILE);
     }
 
+    /**
+     * Computes a mesh ID based on the given address components.
+     * <p>
+     * The method removes whitespace and non-alphanumeric characters from the address,
+     * hashes the cleaned string using SHA-256, and returns a shortened base64-encoded version.
+     * <p>
+     * This mesh ID is used to identify and group peers living in the same building.
+     *
+     * @param street      the street name
+     * @param houseNumber the house number
+     * @param zipCode     the postal code
+     * @param city        the city
+     * @return a short base64-encoded mesh ID
+     */
     public String computeAddressMeshId(String street, String houseNumber, String zipCode, String city) {
         String raw = (street + houseNumber + zipCode + city).replaceAll("\\s+", "").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
 
@@ -212,6 +226,14 @@ public class UserProfile {
         }
     }
 
+    /**
+     * Converts this profile into a JSON object formatted for network transmission.
+     * <p>
+     * Includes the user ID, name, floor, phone, email, timestamp, and mesh ID.
+     * Keys are abbreviated according to the Flurfunk protocol specification.
+     *
+     * @return a {@link JSONObject} containing the user's data, or an empty object if an error occurs
+     */
     public JSONObject toJsonForNetwork() {
         JSONObject obj = new JSONObject();
         try {

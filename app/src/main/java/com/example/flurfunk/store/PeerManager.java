@@ -19,8 +19,11 @@ import java.util.stream.Collectors;
 /**
  * Utility class for managing peer data (i.e., other user profiles) in the Flurfunk app.
  * <p>
- * This class provides functionality for loading, saving, and updating peer profiles
- * using a local JSON file stored in the app’s internal storage.
+ * This class provides methods to load, save, retrieve, and update peer {@link UserProfile} instances.
+ * Peers are other users who are part of the LoRa mesh network. Their data is stored locally
+ * in a JSON file and used for synchronization and activity tracking.
+ * <p>
+ * A peer is considered inactive if no message has been received from them within 6 weeks.
  */
 public class PeerManager {
 
@@ -122,6 +125,14 @@ public class PeerManager {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Determines whether a peer is considered active.
+     * <p>
+     * A peer is active if their lastSeen timestamp is within the last 6 weeks.
+     *
+     * @param peer the {@link UserProfile} to check
+     * @return {@code true} if the peer is active, {@code false} if inactive
+     */
     public static boolean isPeerActive(UserProfile peer) {
         return peer.getLastSeen() > 0 && (System.currentTimeMillis() - peer.getLastSeen() < INACTIVITY_TIMEOUT_MS);
     }

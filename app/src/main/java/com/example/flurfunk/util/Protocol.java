@@ -11,10 +11,13 @@ import java.util.Map;
  * <p>
  * A protocol message has the format:
  * <pre>
- *     #COMMAND#KEY1=VAL1;KEY2=VAL2;...
+ *     #COMMAND|KEY1=VAL1;KEY2=VAL2;...;EOM
  * </pre>
  * where the command is a fixed-length identifier (e.g. {@code SYNOF}) and the payload is a
- * series of key-value pairs separated by semicolons.
+ * semicolon-separated list of key-value pairs. The message always ends with {@code ;EOM}.
+ * <p>
+ * The class provides static methods to build and parse messages, and defines command and key
+ * constants for all supported protocol operations related to offer and peer synchronization.
  */
 public class Protocol {
 
@@ -45,6 +48,9 @@ public class Protocol {
      * Contains the full data of one or more peer profiles.
      */
     public static final String PRDAT = "PRDAT";
+    /**
+     * Notification of a deleted user profile.
+     */
     public static final String USRDEL = "USRDEL";
 
 
@@ -70,6 +76,10 @@ public class Protocol {
      * Timestamp of the item (offer or profile).
      */
     public static final String KEY_TS = "TS";
+    /**
+     * Initialization vector for encrypted content.
+     */
+    public static final String KEY_IV = "IV";
 
     // --- Offer-related keys ---
 
@@ -132,6 +142,9 @@ public class Protocol {
      * Email address.
      */
     public static final String KEY_MAIL = "EML";
+    /**
+     * Last seen timestamp.
+     */
     public static final String KEY_LS = "LS";
 
     /**
@@ -210,7 +223,8 @@ public class Protocol {
     }
 
     /**
-     * Represents a parsed protocol message, consisting of a command and key-value pairs.
+     * Represents a parsed protocol message, consisting of a command and a map of key-value pairs.
+     * Used as the result of the {@link Protocol#parse(String)} method.
      */
     public static class ParsedMessage {
         /**

@@ -34,7 +34,17 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 
 /**
- * LoRa-USB-Manager mit robustem Frame-Parser (SerialFrameReader).
+ * A LoRa communication manager for USB-based AT-command-compatible devices.
+ * <p>
+ * This class handles:
+ * <ul>
+ *     <li>USB dongle detection and permission handling</li>
+ *     <li>Serial connection via {@link UsbSerialPort}</li>
+ *     <li>Initialization of LoRa dongle using AT commands</li>
+ *     <li>Reliable transmission queue with delay management</li>
+ *     <li>Message reception using a robust serial frame parser</li>
+ * </ul>
+ * Messages are expected to be framed using a '#' start byte and ending with ";EOM".
  */
 public class ATLoRaManager implements LoRaManager, LoRaListener {
 
@@ -59,7 +69,11 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
     private Consumer<String> onMessageReceived;
     private final SerialFrameReader frameReader;
 
-
+    /**
+     * Constructs the LoRa manager and starts the TX thread.
+     *
+     * @param context the application context
+     */
     public ATLoRaManager(Context context) {
         this.context = context;
         this.usbManager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
@@ -67,11 +81,22 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         new Thread(this::txLoop, "LoRaTxWorker").start();
     }
 
+    /**
+     * Sets the callback to be invoked when a complete LoRa message is received.
+     *
+     * @param handler a consumer that handles parsed messages
+     */
     @Override
-    public void setOnMessageReceived(Consumer<String> handler){
+    public void setOnMessageReceived(Consumer<String> handler) {
         this.onMessageReceived = handler;
     }
 
+    /**
+     * Queues a broadcast message to be sent over LoRa.
+     * Messages exceeding 960 bytes are dropped.
+     *
+     * @param message the message string to send
+     */
     @Override
     public void sendBroadcast(String message) {
         if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
@@ -81,6 +106,9 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         txQueue.offer(message);
     }
 
+    /**
+     * Starts the USB receiver and attempts to detect and bind to the LoRa dongle.
+     */
     @Override
     public void start() {
         if (!receiverRegistered) {
@@ -92,6 +120,9 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         detectDongle();
     }
 
+    /**
+     * Stops the LoRa manager, disconnects from USB, unbinds the service, and resets internal state.
+     */
     @Override
     public void stop() {
         if (receiverRegistered) {
@@ -114,6 +145,12 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         frameReader.setInitialized(false);
     }
 
+    /**
+     * Scans for connected USB serial devices and requests permission if necessary.
+     * <p>
+     * If permission is already granted, retrieves the first available serial port
+     * and proceeds to bind the LoRa service for communication.
+     */
     private void detectDongle() {
         List<UsbSerialDriver> drivers = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
         if (drivers.isEmpty()) {
@@ -135,6 +172,11 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     }
 
+    /**
+     * Binds the Android service responsible for managing the USB serial connection.
+     * <p>
+     * If the service is not yet bound, it creates an intent and establishes the service connection.
+     */
     private void bindLoRaService() {
         if (!bound) {
             Intent intent = new Intent(context, LoRaService.class);
@@ -142,6 +184,12 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     }
 
+    /**
+     * BroadcastReceiver that listens for the result of a USB permission request.
+     * <p>
+     * If permission is granted for the selected USB device, it initializes the
+     * serial port and proceeds to bind the LoRa service.
+     */
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @SuppressLint("UnsafeIntentLaunch")
         @Override
@@ -163,6 +211,13 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     };
 
+    /**
+     * Defines the lifecycle of the connection to the {@link LoRaService}.
+     * <ul>
+     *     <li>On connect: assigns the service and calls {@code connect()} on it.</li>
+     *     <li>On disconnect: resets state and disables message sending.</li>
+     * </ul>
+     */
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName n, IBinder service) {
@@ -181,6 +236,14 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     };
 
+    /**
+     * Sends a predefined set of AT commands to configure the LoRa dongle.
+     * <p>
+     * This includes switching to LoRa mode, setting spreading factor,
+     * bandwidth, coding rate, TX/RX channels, and enabling RSSI reporting.
+     * <p>
+     * If initialization fails, the method schedules a retry.
+     */
     private void initializeDongle() {
         Log.d(TAG, "Initializing LoRa dongle …");
         try {
@@ -207,6 +270,11 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     }
 
+    /**
+     * Schedules a retry of the dongle detection and initialization after a short delay.
+     * <p>
+     * Called when initialization fails or when the USB connection is unexpectedly lost.
+     */
     private void retryInitLater() {
         initialized = false;
         readyToSend = false;
@@ -220,12 +288,21 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }).start();
     }
 
+    /**
+     * Called when the USB serial connection is successfully established.
+     * Starts a separate thread to initialize the dongle with AT commands.
+     */
     @Override
     public void onConnected() {
         Log.i(TAG, "USB connected");
         new Thread(this::initializeDongle).start();
     }
 
+    /**
+     * Handles raw byte input from the LoRa dongle and delegates parsing to {@link SerialFrameReader}.
+     *
+     * @param data raw byte data received via serial
+     */
     @Override
     public void onSerialRead(byte[] data) {
         isReceiving = true;
@@ -237,6 +314,12 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     }
 
+    /**
+     * Handles LoRa communication errors.
+     * Stops the current connection and retries initialization after a delay.
+     *
+     * @param e the encountered exception
+     */
     @Override
     public void onError(Exception e) {
         Log.e(TAG, "LoRa error", e);
@@ -246,6 +329,10 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         retryInitLater();
     }
 
+    /**
+     * Called when the USB device is disconnected.
+     * Triggers reinitialization logic.
+     */
     @Override
     public void onDisconnected() {
         Log.i(TAG, "USB disconnected");
@@ -254,6 +341,10 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         retryInitLater();
     }
 
+    /**
+     * Continuously processes the TX queue and ensures a minimum delay between messages.
+     * Waits if the dongle is currently receiving or if the minimal gap has not passed.
+     */
     private void txLoop() {
         for (; ; ) {
             try {
@@ -277,6 +368,11 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         }
     }
 
+    /**
+     * Sends the given message over LoRa, or requeues it if the dongle is not ready.
+     *
+     * @param message the message to send
+     */
     private void sendOut(String message) {
         if (!readyToSend || loRaService == null) {
             Log.w(TAG, "TX skipped - LoRaService not ready");
@@ -288,12 +384,28 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
         Log.d(TAG, "TX → " + message.length() + " B");
     }
 
+    /**
+     * Handles a fully assembled and decoded message frame.
+     * Invokes the message callback if registered.
+     *
+     * @param frame the complete message string
+     */
     private void handleFrame(String frame) {
         Log.i(TAG, "Full message to be parsed: " + frame);
         if (onMessageReceived != null) onMessageReceived.accept(frame);
     }
 
-
+    /**
+     * Utility class for decoding framed serial input from the LoRa dongle.
+     * <p>
+     * Detects messages that:
+     * <ul>
+     *     <li>start with '#' (0x23)</li>
+     *     <li>end with the byte sequence ";EOM"</li>
+     * </ul>
+     * Buffers incomplete chunks until a valid frame is completed.
+     * Decodes using UTF-8 with error reporting enabled.
+     */
     private static final class SerialFrameReader {
 
         private static final byte START = (byte) '#';
@@ -313,11 +425,22 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
             this.cb = cb;
         }
 
+        /**
+         * Enables or disables the frame parser and clears the buffer if disabled.
+         *
+         * @param i {@code true} to enable parsing, {@code false} to disable and reset
+         */
         void setInitialized(boolean i) {
             on = i;
             if (!i) len = 0;
         }
 
+        /**
+         * Feeds raw serial data into the parser. If a complete message frame is detected,
+         * it is decoded and passed to the registered callback.
+         *
+         * @param data the incoming serial data chunk
+         */
         synchronized void onSerialRead(byte[] data) {
             if (data == null || data.length == 0) return;
 

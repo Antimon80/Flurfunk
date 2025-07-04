@@ -22,10 +22,16 @@ import com.example.flurfunk.util.Constants;
 import java.util.List;
 
 /**
- * RecyclerView adapter for displaying a list of offers in the offer list screen.
+ * RecyclerView adapter for displaying a list of {@link Offer} objects in the UI.
  * <p>
- * Each list item shows the offer's title, creator name, floor, and contact information.
- * Clicking on an item navigates to the {@code OfferDetailFragment} to show full details.
+ * Each item displays the offer's title, creator name, floor, and contact information.
+ * When tapped, the user is navigated to {@code OfferDetailFragment} for detailed viewing.
+ * <p>
+ * If the current category is {@code MY_OFFERS}, the background color reflects the offer status:
+ * <ul>
+ *     <li>Green for active offers</li>
+ *     <li>Red for inactive offers</li>
+ * </ul>
  */
 public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.OfferViewHolder> {
     private final List<Offer> offers;
@@ -33,10 +39,11 @@ public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.Offe
     private Constants.Category category;
 
     /**
-     * Constructs a new {@code OfferListAdapter}.
+     * Constructs a new {@code OfferListAdapter} with the given list and context.
      *
-     * @param offers  the list of offers to display
-     * @param context the context used to access resources and inflate views
+     * @param offers   the list of offers to be displayed
+     * @param context  the context, typically an activity or fragment
+     * @param category the category to filter and style the display accordingly
      */
     public OfferListAdapter(List<Offer> offers, Context context, Constants.Category category) {
         this.offers = offers;
@@ -45,11 +52,11 @@ public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.Offe
     }
 
     /**
-     * Inflates the layout for a single offer item.
+     * Creates and inflates a new {@link OfferViewHolder} for a RecyclerView item.
      *
      * @param parent   the parent view group
      * @param viewType the view type (unused)
-     * @return a new {@link OfferViewHolder}
+     * @return a new view holder for the offer item
      */
     @NonNull
     @Override
@@ -59,9 +66,13 @@ public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.Offe
     }
 
     /**
-     * Binds an offer to a view holder, displaying offer and creator information.
+     * Binds the data of a specific {@link Offer} to the provided view holder.
+     * <p>
+     * Looks up the creator's name, floor, and contact details via {@link PeerManager}.
+     * Also sets the background color depending on the offer status (only for {@code MY_OFFERS}).
+     * Tapping the item navigates to the detail screen with offer ID passed via Bundle.
      *
-     * @param holder   the view holder to bind data to
+     * @param holder   the view holder to bind to
      * @param position the position of the offer in the list
      */
     @Override

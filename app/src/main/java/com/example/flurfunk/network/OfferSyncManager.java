@@ -10,6 +10,7 @@ import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.util.Constants;
 import com.example.flurfunk.util.Protocol;
 import com.example.flurfunk.util.Protocol.ParsedMessage;
+import com.example.flurfunk.util.SecureCrypto;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,15 +26,16 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Responsible for synchronizing offer data between nearby devices using LoRa communication.
  * <p>
- * This class handles:
+ * The {@code OfferSyncManager} handles:
  * <ul>
- *     <li>Sending sync messages with local offer summaries</li>
- *     <li>Receiving and comparing remote offer summaries</li>
- *     <li>Requesting missing or outdated offers</li>
- *     <li>Responding to offer requests</li>
- *     <li>Handling full offer data messages</li>
+ *     <li>Broadcasting local offer summaries to peers ({@code SYNOF})</li>
+ *     <li>Requesting missing or outdated offers from peers ({@code REQOF})</li>
+ *     <li>Sending full offer data in response ({@code OFDAT})</li>
+ *     <li>Importing incoming offer data and updating local storage</li>
+ *     <li>Automatic inactivation of outdated active offers</li>
  * </ul>
  */
+
 public class OfferSyncManager {
     private final Context context;
     private final UserProfile userProfile;
@@ -43,11 +45,11 @@ public class OfferSyncManager {
     private static final String TAG = "OfferSyncManager";
 
     /**
-     * Constructs a new OfferSyncManager.
+     * Constructs a new {@code OfferSyncManager} for the given user and context.
      *
-     * @param context     the application context
-     * @param userProfile the current user's profile
-     * @param loRaManager the LoRaManager used to send messages
+     * @param context     the Android application context
+     * @param userProfile the local user profile
+     * @param loRaManager the manager responsible for LoRa communication
      */
     public OfferSyncManager(Context context, UserProfile userProfile, LoRaManager loRaManager) {
         this.context = context;
@@ -56,8 +58,10 @@ public class OfferSyncManager {
     }
 
     /**
-     * Sends a synchronization message to all peers with the same address.
-     * This message contains a summary (ID and timestamp) of all local offers.
+     * Sends a synchronization message to all peers with the same mesh ID.
+     * <p>
+     * The message contains a summary of local offers (offer ID and timestamp).
+     * Offers are split into multiple packets if needed to fit within 960 bytes.
      */
     public void sendOfferSync() {
         deactivateOutdatedOffers();
@@ -98,6 +102,13 @@ public class OfferSyncManager {
         }
     }
 
+    /**
+     * Builds a list of offer summaries for synchronization.
+     * <p>
+     * Only active offers from active peers are included.
+     *
+     * @return a {@link JSONArray} of offer metadata (ID and timestamp)
+     */
     public JSONArray buildOfferList() {
         JSONArray offerSummaries = new JSONArray();
         List<Offer> localOffers = OfferManager.loadOffers(context);
@@ -120,10 +131,12 @@ public class OfferSyncManager {
     }
 
     /**
-     * Handles a received sync message by comparing remote offer summaries to local offers
-     * and sending a request for any missing or outdated offers.
+     * Handles a received {@code SYNOF} synchronization message.
+     * <p>
+     * Compares the incoming list of offer summaries to local offers
+     * and sends a request for any missing or outdated ones.
      *
-     * @param msg      the parsed sync message
+     * @param msg the parsed protocol message
      */
     public void handleSyncMessage(ParsedMessage msg) {
         if (!userProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) {
@@ -164,7 +177,10 @@ public class OfferSyncManager {
     }
 
     /**
-     * Sends a request to a peer asking for the full data of the specified offer IDs.
+     * Sends a {@code REQOF} request message for the specified offer IDs.
+     * <p>
+     * The request is split into multiple broadcast messages if the
+     * encoded payload exceeds the LoRa size limit (960 bytes).
      *
      * @param offerIds the list of offer IDs to request
      */
@@ -205,10 +221,12 @@ public class OfferSyncManager {
     }
 
     /**
-     * Handles a request from a peer for specific offers.
-     * Responds with full offer data, sent either as individual messages or in bulk.
+     * Handles a {@code REQOF} request message received from another peer.
+     * <p>
+     * Responds by sending full offer data for each requested offer as {@code OFDAT} messages.
+     * The response is encrypted using the mesh ID as the shared key.
      *
-     * @param msg      the parsed offer request message
+     * @param msg the parsed request message
      */
     public void handleOfferRequest(ParsedMessage msg) {
         if (!userProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) {
@@ -247,14 +265,21 @@ public class OfferSyncManager {
                 payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
                 payload.put(Protocol.KEY_UID, userProfile.getId());
                 payload.put(Protocol.KEY_MID, userProfile.getMeshId());
-                payload.put(Protocol.KEY_OFA, chunk.toString());
+
+                // Encryption
+                SecureCrypto.EncryptedPayload encrypted = SecureCrypto.encrypt(chunk.toString(), userProfile.getMeshId());
+                payload.put(Protocol.KEY_IV, encrypted.iv);
+                payload.put(Protocol.KEY_OFA, encrypted.ciphertext);
 
                 String message = Protocol.build(Protocol.OFDAT, payload);
 
                 if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
                     chunk.remove(chunk.length() - 1);
 
-                    payload.put(Protocol.KEY_OFA, chunk.toString());
+                    // Encryption
+                    encrypted = SecureCrypto.encrypt(chunk.toString(), userProfile.getMeshId());
+                    payload.put(Protocol.KEY_IV, encrypted.iv);
+                    payload.put(Protocol.KEY_OFA, encrypted.ciphertext);
                     Log.d(TAG, "OFDAT larger than 960 B - " + Protocol.build(Protocol.OFDAT, payload));
                     loRaManager.sendBroadcast(Protocol.build(Protocol.OFDAT, payload));
 
@@ -262,7 +287,10 @@ public class OfferSyncManager {
                 }
 
                 if (i == requested.length() - 1 && chunk.length() > 0) {
-                    payload.put(Protocol.KEY_OFA, chunk.toString());
+                    // Encryption
+                    encrypted = SecureCrypto.encrypt(chunk.toString(), userProfile.getMeshId());
+                    payload.put(Protocol.KEY_IV, encrypted.iv);
+                    payload.put(Protocol.KEY_OFA, encrypted.ciphertext);
                     Log.d(TAG, "OFDAT smaller than 960 B - " + Protocol.build(Protocol.OFDAT, payload));
                     loRaManager.sendBroadcast(Protocol.build(Protocol.OFDAT, payload));
                 }
@@ -274,19 +302,26 @@ public class OfferSyncManager {
     }
 
     /**
-     * Handles incoming full offer data messages (individual or batch),
-     * imports them into the local storage, and updates existing entries if needed.
+     * Handles an incoming {@code OFDAT} message containing encrypted offer data.
+     * <p>
+     * Decrypts and parses the data, updates or adds offers to local storage.
      *
-     * @param msg the parsed message containing offer data
+     * @param msg the parsed data message
      */
     public void handleOfferData(ParsedMessage msg) {
         try {
             List<Offer> current = OfferManager.loadOffers(context);
-                JSONArray array = new JSONArray(msg.getValue(Protocol.KEY_OFA));
-                for (int i = 0; i < array.length(); i++) {
-                    JSONObject data = array.getJSONObject(i);
-                    importOffer(data, current);
-                }
+
+            // Decryption
+            String iv = msg.getValue(Protocol.KEY_IV);
+            String ciphertext = msg.getValue(Protocol.KEY_OFA);
+            String decryptedJson = SecureCrypto.decrypt(ciphertext, iv, userProfile.getMeshId());
+
+            JSONArray array = new JSONArray(decryptedJson);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject data = array.getJSONObject(i);
+                importOffer(data, current);
+            }
 
             OfferManager.saveOffers(context, current);
             Log.i(TAG, "Saving incoming offer data");
@@ -296,12 +331,13 @@ public class OfferSyncManager {
     }
 
     /**
-     * Imports a single offer into the provided list of offers.
-     * Updates the existing offer if it already exists, or adds a new one.
+     * Imports a single offer from JSON into the given list.
+     * <p>
+     * Updates the existing entry if already present, or adds it otherwise.
      *
-     * @param data    the JSON object containing offer data
-     * @param current the current list of local offers
-     * @throws JSONException if data fields are missing or malformed
+     * @param data    the JSON representation of the offer
+     * @param current the list of existing local offers
+     * @throws JSONException if any field is missing or invalid
      */
     private void importOffer(JSONObject data, List<Offer> current) throws JSONException {
         Offer offer = new Offer();
@@ -316,6 +352,11 @@ public class OfferSyncManager {
         OfferManager.updateOrAdd(current, offer);
     }
 
+    /**
+     * Automatically sets offers to INACTIVE if they are older than {@code MAX_ACTIVE_AGE_MS}.
+     * <p>
+     * The method is called before sending a sync broadcast to avoid advertising stale offers.
+     */
     private void deactivateOutdatedOffers() {
         List<Offer> offers = OfferManager.loadOffers(context);
         long cutoff = System.currentTimeMillis() - MAX_ACTIVE_AGE_MS;

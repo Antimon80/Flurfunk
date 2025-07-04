@@ -26,15 +26,15 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * A fragment that displays a list of offers filtered by category.
+ * A fragment that displays a list of offers filtered by {@link Constants.Category}.
  * <p>
- * If the category is set to {@code MY_OFFERS}, it shows only the current user's own offers.
- * For all other categories, it displays active offers only.
+ * If the category is {@code MY_OFFERS}, only offers created by the current user are shown.
+ * Otherwise, the fragment shows all active, non-deleted offers within the selected category.
  * <p>
- * The fragment includes a floating action button to open the offer creation screen.
+ * A floating action button allows users to create new offers in the current category.
+ * The list updates automatically when the fragment is resumed.
  */
 public class OfferListFragment extends Fragment {
 
@@ -42,9 +42,11 @@ public class OfferListFragment extends Fragment {
     private Category category;
 
     /**
-     * Reads the category from the fragment arguments and sets a default if invalid or missing.
+     * Reads the category to display from the fragment arguments.
+     * <p>
+     * If the argument is missing or invalid, {@code ELECTRONICS} is used as the default.
      *
-     * @param savedInstanceState previously saved instance state (unused)
+     * @param savedInstanceState unused, as this fragment does not use saved state
      */
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -61,12 +63,19 @@ public class OfferListFragment extends Fragment {
     }
 
     /**
-     * Inflates the layout, sets up the RecyclerView with filtered offers,
-     * and handles the creation button for new offers.
+     * Inflates the offer list layout and sets up the RecyclerView.
+     * <p>
+     * Offers are filtered based on the selected category:
+     * <ul>
+     *     <li>{@code MY_OFFERS} → only user's own offers (excluding deleted)</li>
+     *     <li>Other categories → only active, non-deleted offers in the selected category</li>
+     * </ul>
+     * If the filtered list is empty, a placeholder text is shown.
+     * The floating action button opens the {@link CreateOfferActivity}.
      *
      * @param inflater           the layout inflater
      * @param container          the parent view group
-     * @param savedInstanceState previously saved instance state (unused)
+     * @param savedInstanceState unused
      * @return the root view of the fragment
      */
     @Override
@@ -113,12 +122,12 @@ public class OfferListFragment extends Fragment {
     }
 
     /**
-     * Called when the fragment becomes visible to the user.
+     * Reloads the list of offers when the fragment becomes visible again.
      * <p>
-     * Reloads the list of offers and updates the RecyclerView.
-     * If there are no offers for the current category, a placeholder text is shown instead.
-     * This ensures that newly created or deleted offers are reflected immediately
-     * after returning from the offer creation screen.
+     * This ensures that new or changed offers (e.g., created, deleted, deactivated)
+     * are reflected in the UI without requiring a full restart.
+     * <p>
+     * If the offer list is empty after filtering, a placeholder message is shown.
      */
     @Override
     public void onResume() {

@@ -24,17 +24,16 @@ import com.example.flurfunk.network.LoRaManager;
 import com.example.flurfunk.network.PeerSyncManager;
 import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.ui.activities.ProfileSetupActivity;
-import com.example.flurfunk.util.Protocol;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Fragment that displays the user's settings, allowing them to view, update, or delete their profile.
+ * Fragment that displays and manages the current user's profile settings.
  * <p>
- * The user can edit their name, floor, email, and phone number. Upon saving, changes are stored locally
- * and also propagated to the peer list. If the user deletes their profile, they are redirected to
- * the {@link ProfileSetupActivity}.
+ * Allows editing of floor, email, and phone number. Changes are saved locally
+ * and synchronized with peers via {@link PeerManager}.
+ * <p>
+ * Also allows the user to delete their profile. In that case, a deletion
+ * broadcast is sent via {@link PeerSyncManager}, and the user is redirected
+ * to the {@link ProfileSetupActivity}.
  */
 public class SettingsFragment extends Fragment {
 
@@ -43,12 +42,12 @@ public class SettingsFragment extends Fragment {
     private static final String TAG = "SettingsFragment";
 
     /**
-     * Inflates the settings layout.
+     * Inflates the settings layout for the user profile.
      *
-     * @param inflater          the layout inflater
-     * @param container         the parent view group
-     * @param saveInstanceState saved state from previous instance (unused)
-     * @return the inflated view
+     * @param inflater           the layout inflater used to inflate views
+     * @param container          the parent view group of the fragment
+     * @param saveInstanceState  the previously saved state (unused)
+     * @return the root view of the fragment
      */
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle saveInstanceState) {
@@ -56,10 +55,17 @@ public class SettingsFragment extends Fragment {
     }
 
     /**
-     * Initializes the UI components and sets up button listeners for saving and deleting the profile.
+     * Initializes the UI components and populates them with the current user profile.
+     * <p>
+     * Provides options to:
+     * <ul>
+     *     <li>Update the local profile (floor, email, phone)</li>
+     *     <li>Synchronize profile changes with peers</li>
+     *     <li>Delete the profile and notify peers</li>
+     * </ul>
      *
-     * @param view               the root view of the fragment
-     * @param savedInstanceState saved state from previous instance (unused)
+     * @param view               the fragment's root view
+     * @param savedInstanceState previously saved instance state (unused)
      */
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {

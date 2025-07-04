@@ -21,9 +21,12 @@ import java.lang.reflect.Type;
 
 /**
  * A utility class for managing offer data within the Flurfunk application.
- * Provides methods for saving, loading, filtering, and updating {@link Offer} objects.
  * <p>
- * Offers are stored in JSON format in the app's internal storage.
+ * This class provides static methods for saving, loading, filtering, retrieving, and updating {@link Offer} objects,
+ * which represent items offered by users on the local mesh network.
+ * <p>
+ * Offers are serialized to and deserialized from a JSON file in the app's internal storage.
+ * Filtering methods support common criteria such as status, creator, and category.
  */
 public class OfferManager {
 
@@ -110,6 +113,13 @@ public class OfferManager {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Filters a list of offers based on their deletion flag.
+     *
+     * @param offers  the list of offers to filter
+     * @param deleted {@code true} to return deleted offers, {@code false} to return active ones
+     * @return a list of offers matching the deleted status
+     */
     public static List<Offer> filterByDeletion(List<Offer> offers, boolean deleted){
         return offers.stream().filter(offer -> offer.isDeleted() == deleted).collect(Collectors.toList());
     }
@@ -144,6 +154,15 @@ public class OfferManager {
         offers.add(newOffer);
     }
 
+    /**
+     * Deactivates all offers created by peers marked as inactive.
+     * <p>
+     * An offer will be marked as {@link OfferStatus#INACTIVE} if its creator exists in the peer list
+     * but has not been seen recently (based on the activity threshold defined in {@link PeerManager}).
+     * If any offer status is updated, the updated list is saved.
+     *
+     * @param context the Android context used for loading and saving offers and peers
+     */
     public static void deactivateOffersOfInactiveUsers(Context context) {
         List<UserProfile> peers = PeerManager.loadPeers(context);
         List<Offer> offers = loadOffers(context);

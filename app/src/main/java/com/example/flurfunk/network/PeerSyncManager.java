@@ -10,6 +10,7 @@ import com.example.flurfunk.store.PeerManager;
 import com.example.flurfunk.util.Constants;
 import com.example.flurfunk.util.Protocol;
 import com.example.flurfunk.util.Protocol.ParsedMessage;
+import com.example.flurfunk.util.SecureCrypto;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -31,8 +32,8 @@ import java.util.concurrent.ThreadLocalRandom;
  *     <li><b>REQPR</b> – peer_request: request for missing or outdated peer profiles</li>
  *     <li><b>PRDAT</b> – peer_data: full profile data for one or more requested peers</li>
  * </ul>
- * <p>
- * This manager ensures that each device maintains an up-to-date set of peer profiles within the same address scope.
+ * This manager ensures that each device maintains an up-to-date set of peer profiles
+ * for all users sharing the same mesh (i.e. address-based) network.
  */
 public class PeerSyncManager {
 
@@ -55,17 +56,25 @@ public class PeerSyncManager {
         this.loRaManager = loRaManager;
     }
 
+    /**
+     * Sends a {@code SYNPR} broadcast to peers with the same mesh ID.
+     * <p>
+     * The message includes the local device's lastSeen timestamp
+     * and a list of known peer profile timestamps for comparison.
+     */
     public void sendPeerSync() {
         List<UserProfile> allPeers = PeerManager.loadPeers(context);
         JSONArray chunk = new JSONArray();
 
         localProfile.updateLastSeen();
+        PeerManager.updateLastSeen(context, localProfile.getId(), localProfile.getLastSeen());
 
         for (UserProfile peer : allPeers) {
             if (!peer.getMeshId().equals(localProfile.getMeshId())) {
                 continue;
             }
             if (!PeerManager.isPeerActive(peer)) {
+                Log.d(TAG, "No active peers, stopping PeerSync");
                 continue;
             }
 
@@ -111,10 +120,12 @@ public class PeerSyncManager {
     }
 
     /**
-     * Handles an incoming peer list ({@code SYNPR}) message from a remote peer.
-     * Compares the list with local peer profiles and requests any missing or outdated entries.
+     * Handles an incoming {@code SYNPR} peer list message.
+     * <p>
+     * Updates the sender's {@code lastSeen} timestamp and determines
+     * which profiles are missing or outdated. A {@code REQPR} is sent if needed.
      *
-     * @param msg the parsed protocol message
+     * @param msg the parsed {@link ParsedMessage} containing peer summaries
      */
     public void handlePeerList(ParsedMessage msg) {
         if (!localProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) {
@@ -161,8 +172,9 @@ public class PeerSyncManager {
     }
 
     /**
-     * Sends a {@code REQPR} peer request message to a peer,
-     * requesting full profiles for the specified peer IDs.
+     * Sends a {@code REQPR} request for full profile data for the specified peer IDs.
+     * <p>
+     * Large requests are split into multiple packets if they exceed the LoRa size limit.
      *
      * @param peerIds the list of peer IDs to request
      */
@@ -202,10 +214,12 @@ public class PeerSyncManager {
     }
 
     /**
-     * Handles an incoming {@code REQPR} peer request and responds
-     * with the full profile data for all requested peers that are known locally.
+     * Handles an incoming {@code REQPR} request.
+     * <p>
+     * Sends a {@code PRDAT} response containing full profile data for all requested peer IDs
+     * that are available locally.
      *
-     * @param msg the parsed request message
+     * @param msg the parsed peer request message
      */
     public void handlePeerRequest(ParsedMessage msg) {
         if (!localProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) return;
@@ -233,9 +247,12 @@ public class PeerSyncManager {
     }
 
     /**
-     * Sends a {@code PRDAT} message containing full profile data for the given list of peers.
+     * Sends a {@code PRDAT} message containing full profile data.
+     * <p>
+     * Profile data is encrypted using the shared mesh ID. If the message size
+     * exceeds 960 bytes, the data is chunked and sent in multiple messages.
      *
-     * @param profiles the list of peer profiles to send
+     * @param profiles the list of {@link UserProfile} objects to send
      */
     private void sendPeerData(List<UserProfile> profiles) {
         JSONArray chunk = new JSONArray();
@@ -248,39 +265,54 @@ public class PeerSyncManager {
             payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));
             payload.put(Protocol.KEY_UID, localProfile.getId());
             payload.put(Protocol.KEY_MID, localProfile.getMeshId());
-            payload.put(Protocol.KEY_PFD, chunk.toString());
+
+            // Encryption
+            SecureCrypto.EncryptedPayload encrypted = SecureCrypto.encrypt(chunk.toString(), localProfile.getMeshId());
+            payload.put(Protocol.KEY_IV, encrypted.iv);
+            payload.put(Protocol.KEY_PFD, encrypted.ciphertext);
 
             String message = Protocol.build(Protocol.PRDAT, payload);
 
             if (message.getBytes(StandardCharsets.UTF_8).length > MAX_LORA_BYTES) {
                 chunk.remove(chunk.length() - 1);
 
-                payload.put(Protocol.KEY_PFD, chunk.toString());
+                // Encryption
+                encrypted = SecureCrypto.encrypt(chunk.toString(), localProfile.getMeshId());
+                payload.put(Protocol.KEY_IV, encrypted.iv);
+                payload.put(Protocol.KEY_PFD, encrypted.ciphertext);
                 loRaManager.sendBroadcast(Protocol.build(Protocol.PRDAT, payload));
 
                 chunk = new JSONArray().put(obj);
             }
 
             if (i == profiles.size() - 1 && chunk.length() > 0) {
-                payload.put(Protocol.KEY_PFD, chunk.toString());
+                // Encryption
+                encrypted = SecureCrypto.encrypt(chunk.toString(), localProfile.getMeshId());
+                payload.put(Protocol.KEY_IV, encrypted.iv);
+                payload.put(Protocol.KEY_PFD, encrypted.ciphertext);
                 loRaManager.sendBroadcast(Protocol.build(Protocol.PRDAT, payload));
             }
         }
     }
 
     /**
-     * Handles an incoming {@code PRDAT} message and updates the local peer database
-     * with the received profile information.
+     * Handles an incoming {@code PRDAT} message with encrypted peer profile data.
      * <p>
-     * Existing profiles are updated if timestamps are newer; unknown profiles are added.
+     * Decrypts the payload and updates the local peer list accordingly.
+     * New peers are added, and outdated entries are updated.
      *
-     * @param msg the parsed protocol message containing peer profile data
+     * @param msg the parsed peer data message
      */
     public void handlePeerData(ParsedMessage msg) {
         if (!localProfile.getMeshId().equals(msg.getValue(Protocol.KEY_MID))) return;
 
         try {
-            JSONArray array = new JSONArray(msg.getValue(Protocol.KEY_PFD));
+            // Decryption
+            String iv = msg.getValue(Protocol.KEY_IV);
+            String ciphertext = msg.getValue(Protocol.KEY_PFD);
+            String decryptedJson = SecureCrypto.decrypt(ciphertext, iv, localProfile.getMeshId());
+
+            JSONArray array = new JSONArray(decryptedJson);
             for (int i = 0; i < array.length(); i++) {
                 JSONObject data = array.getJSONObject(i);
 
@@ -300,6 +332,13 @@ public class PeerSyncManager {
         }
     }
 
+    /**
+     * Handles an incoming {@code USRDEL} message indicating a peer was deleted.
+     * <p>
+     * Marks the peer as inactive and sets all of their active offers to {@code INACTIVE}.
+     *
+     * @param msg the parsed deletion message
+     */
     public void handleUserDeletion(ParsedMessage msg) {
         String deletedUserId = msg.getValue(Protocol.KEY_UID);
         String meshId = msg.getValue(Protocol.KEY_MID);
@@ -326,6 +365,10 @@ public class PeerSyncManager {
         }
     }
 
+    /**
+     * Broadcasts a {@code USRDEL} message indicating that this user has been deleted
+     * or marked as inactive, so that peers can update their records accordingly.
+     */
     public void sendUserDeletion() {
         Map<String, String> payload = new HashMap<>();
         payload.put(Protocol.KEY_ID, String.format("%016x", ThreadLocalRandom.current().nextLong()));

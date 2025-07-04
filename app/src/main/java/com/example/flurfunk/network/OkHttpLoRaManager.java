@@ -3,7 +3,6 @@ package com.example.flurfunk.network;
 import android.util.Log;
 
 import java.io.IOException;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import okhttp3.Call;
@@ -15,20 +14,25 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * A simulated implementation of the {@link LoRaManager} interface that uses HTTP
- * communication to mimic LoRa behavior in an Android emulator environment.
+ * <b>Deprecated / Not used in production</b>
  * <p>
- * This class is designed for local testing and development when physical LoRa hardware
- * is not available. It connects to a proxy server running on {@code http://10.0.2.2:8080},
- * which emulates LoRa message delivery using standard HTTP endpoints.
+ * This class simulates LoRa communication for testing purposes only.
+ * It is <b>not used</b> in the actual Android application running on real LoRa hardware.
+ * <p>
+ * Intended for use in Android emulators or on devices without LoRa USB hardware.
+ * Communicates with a local proxy server running at {@code http://10.0.2.2:8080}
+ * that mimics message sending and receiving using HTTP.
  *
- * <p>Key behaviors:
+ * <p><b>Key behaviors:</b>
  * <ul>
- *     <li>Uses POST requests to {@code /send} to simulate message sending</li>
- *     <li>Continuously polls {@code /poll} for incoming messages</li>
- *     <li>Runs all polling in a background thread</li>
+ *     <li>Sends messages using HTTP POST to {@code /send}</li>
+ *     <li>Polls messages via HTTP GET from {@code /poll}</li>
+ *     <li>Runs polling continuously in a background thread</li>
  * </ul>
+ *
+ * @see LoRaManager
  */
+@Deprecated
 public class OkHttpLoRaManager implements LoRaManager {
 
     private static final String TAG = "OkHttpLoRaManager";
@@ -41,6 +45,7 @@ public class OkHttpLoRaManager implements LoRaManager {
 
     private final StringBuilder httpBuffer = new StringBuilder();
     private volatile boolean running = false;
+
     /**
      * Sets the handler that will be called whenever a new message is received from the proxy.
      *
@@ -52,10 +57,11 @@ public class OkHttpLoRaManager implements LoRaManager {
     }
 
     /**
-     * Sends a message to the proxy by POSTing it to {@code /send}.
-     * The message is suffixed with {@code ;EOM} if not already present.
+     * Sends a message to the proxy server using HTTP POST.
+     * <p>
+     * The message will automatically be suffixed with {@code ;EOM} if not already present.
      *
-     * @param message the protocol-formatted message string
+     * @param message the LoRa-style protocol message to send
      */
     @Override
     public void sendBroadcast(String message) {
@@ -83,10 +89,10 @@ public class OkHttpLoRaManager implements LoRaManager {
     }
 
     /**
-     * Starts the polling loop that periodically checks for new messages from the proxy.
+     * Starts a background polling thread that continuously checks the proxy server for new messages.
      * <p>
-     * This loop runs in a separate thread and performs HTTP GET requests to {@code /poll}.
-     * If a message is received, it is passed to the registered handler (if any).
+     * Polling is done using HTTP GET to {@code /poll}, and all received messages
+     * are parsed and passed to the registered handler (if any).
      */
     @Override
     public void start() {

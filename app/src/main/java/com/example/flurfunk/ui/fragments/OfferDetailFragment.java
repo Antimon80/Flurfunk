@@ -28,10 +28,12 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * A fragment that displays detailed information about a selected offer.
+ * A fragment that displays detailed information about a selected {@link Offer}.
  * <p>
- * The fragment shows the offer's title, description, creator's name, floor, and contact info.
- * If the current user is the creator of the offer, a button is shown to toggle the offer's active status.
+ * Shows title, description, date, creator contact info (phone/email),
+ * and if the current user is the creator, allows them to deactivate or hide the offer.
+ * <p>
+ * Hiding an offer removes it from the user's own list permanently.
  */
 public class OfferDetailFragment extends Fragment {
 
@@ -49,11 +51,22 @@ public class OfferDetailFragment extends Fragment {
     }
 
     /**
-     * Initializes UI elements and populates them with the selected offer's details.
-     * If the offer belongs to the current user, a button is shown to activate/deactivate it.
+     * Populates the fragment with the offer's data and sets up interaction logic.
+     * <p>
+     * Retrieves the offer by ID passed via fragment arguments and displays:
+     * <ul>
+     *     <li>Offer title and description</li>
+     *     <li>Creation date</li>
+     *     <li>Creator name, floor, phone and email</li>
+     * </ul>
+     * If the viewer is the offer's creator, they can:
+     * <ul>
+     *     <li>Temporarily deactivate/reactivate the offer</li>
+     *     <li>Permanently hide it from their own list</li>
+     * </ul>
      *
-     * @param view               the fragment's root view
-     * @param savedInstanceState previously saved instance state
+     * @param view               the root view returned by {@link #onCreateView}
+     * @param savedInstanceState optional saved state
      */
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {

@@ -45,6 +45,7 @@ import java.util.List;
  *     <li>Setting up the {@link MessageDispatcher} to handle incoming messages</li>
  *     <li>Periodically synchronizing peer and offer data with neighboring devices</li>
  *     <li>Displaying a navigation drawer for category and settings access</li>
+ *     <li>Showing an introduction screen on the first launch</li>
  * </ul>
  */
 public class MainActivity extends AppCompatActivity {
@@ -54,8 +55,6 @@ public class MainActivity extends AppCompatActivity {
     private MessageDispatcher dispatcher;
     private final Handler syncHandler = new Handler();
     private static final String TAG = "MainActivity";
-
-    private static final int START_BYTES = 100;
 
     /**
      * Periodic task that synchronizes peer and offer data every 90 seconds.
@@ -97,10 +96,11 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Called when the activity is created.
      * <p>
-     * Loads the user profile, initializes the LoRa backend, sets up the
-     * message dispatcher, starts synchronization, and configures the navigation UI.
+     * Loads the user profile, initializes the LoRa backend (either real device or emulator),
+     * sets up the message dispatcher, starts the synchronization task, and configures
+     * the navigation drawer UI.
      *
-     * @param savedInstanceState the saved instance state
+     * @param savedInstanceState the saved instance state from a previous launch, if any
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -224,6 +224,12 @@ public class MainActivity extends AppCompatActivity {
                 || super.onSupportNavigateUp();
     }
 
+    /**
+     * Returns the {@link MessageDispatcher} instance for message routing
+     * and synchronization.
+     *
+     * @return the active {@code MessageDispatcher}
+     */
     public MessageDispatcher getDispatcher() {
         return this.dispatcher;
     }
