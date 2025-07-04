@@ -51,13 +51,10 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.junit.jupiter.api)
+    testImplementation(libs.robolectric)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.mockito.inline)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation(libs.core.splashscreen)
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
 }

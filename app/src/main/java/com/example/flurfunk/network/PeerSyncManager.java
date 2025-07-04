@@ -178,7 +178,7 @@ public class PeerSyncManager {
      *
      * @param peerIds the list of peer IDs to request
      */
-    private void sendPeerRequest(List<String> peerIds) {
+    void sendPeerRequest(List<String> peerIds) {
         JSONArray chunk = new JSONArray();
 
         try {
@@ -325,9 +325,19 @@ public class PeerSyncManager {
                 profile.setTimestamp(data.getLong(Protocol.KEY_TS));
                 profile.setMeshId(data.getString(Protocol.KEY_MID));
 
+                List<UserProfile> current = PeerManager.loadPeers(context);
+                for (UserProfile existing : current) {
+                    if (existing.getId().equals(profile.getId())) {
+                        if (existing.getTimestamp() >= profile.getTimestamp()) {
+                            return;
+                        }
+                        break;
+                    }
+                }
+
                 PeerManager.updateOrAddPeer(context, profile);
             }
-        } catch (JSONException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Failed to handle peer data", e);
         }
     }
