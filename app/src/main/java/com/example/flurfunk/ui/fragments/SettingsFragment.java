@@ -91,6 +91,7 @@ public class SettingsFragment extends Fragment {
                 profile.setEmail(editEmail.getText().toString());
                 profile.setPhone(editPhone.getText().toString());
                 profile.updateTimestamp();
+                profile.updateLastSeen();
                 profile.saveToFile(context);
                 PeerManager.updateOrAddPeer(context, profile);
 

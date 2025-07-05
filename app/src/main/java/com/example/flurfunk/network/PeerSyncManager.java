@@ -71,10 +71,7 @@ public class PeerSyncManager {
 
         for (UserProfile peer : allPeers) {
             if (!peer.getMeshId().equals(localProfile.getMeshId())) {
-                continue;
-            }
-            if (!PeerManager.isPeerActive(peer)) {
-                Log.d(TAG, "No active peers, stopping PeerSync");
+                Log.d(TAG, "No peers with same mesh ID, stopping PeerSync");
                 continue;
             }
 

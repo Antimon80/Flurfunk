@@ -11,8 +11,6 @@ import android.content.ServiceConnection;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.os.IBinder;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.content.ContextCompat;
@@ -31,6 +29,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
@@ -52,6 +52,7 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
     private static final String ACTION_USB_PERMISSION = "com.example.flurfunk.USB_PERMISSION";
     private static final int MAX_LORA_BYTES = 960;
     private static final int MIN_GAP_MS = 1500;
+    private static final long RX_IDLE_MS = 2000;
     private long lastTx = 0;
 
     private final Context context;
@@ -65,6 +66,7 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
     private boolean receiverRegistered = false;
     private boolean bound = false;
     private volatile boolean isReceiving = false;
+    private final AtomicLong lastRx = new AtomicLong(0);
     private final BlockingQueue<String> txQueue = new LinkedBlockingQueue<>();
     private Consumer<String> onMessageReceived;
     private final SerialFrameReader frameReader;
@@ -305,13 +307,8 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
      */
     @Override
     public void onSerialRead(byte[] data) {
-        isReceiving = true;
-        try {
-            frameReader.onSerialRead(data);
-        } finally {
-            new Handler(Looper.getMainLooper()).postDelayed(
-                    () -> isReceiving = false, 200);
-        }
+        lastRx.set(System.currentTimeMillis());
+        frameReader.onSerialRead(data);
     }
 
     /**
@@ -346,11 +343,12 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
      * Waits if the dongle is currently receiving or if the minimal gap has not passed.
      */
     private void txLoop() {
-        for (; ; ) {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
                 String msg = txQueue.take();
-                while (isReceiving) {
-                    Thread.sleep(40);
+
+                while (System.currentTimeMillis() - lastRx.get() < RX_IDLE_MS) {
+                    Thread.sleep(20);
                 }
 
                 long wait = MIN_GAP_MS - (System.currentTimeMillis() - lastTx);
@@ -358,12 +356,13 @@ public class ATLoRaManager implements LoRaManager, LoRaListener {
                     Thread.sleep(wait);
                 }
 
-                Thread.sleep((long) (Math.random() * 120));
+                Thread.sleep(ThreadLocalRandom.current().nextInt(0, 121));
 
                 sendOut(msg);
                 lastTx = System.currentTimeMillis();
-            } catch (InterruptedException ignored) {
-                Log.w(TAG, "TX-Thread interrupted");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.w(TAG, "TX-Worker interrupted - terminating", e);
             }
         }
     }

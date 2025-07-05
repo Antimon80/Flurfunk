@@ -113,8 +113,6 @@ public class OfferListAdapter extends RecyclerView.Adapter<OfferListAdapter.Offe
             } else {
                 holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.offer_red));
             }
-        } else {
-            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
         }
     }
 

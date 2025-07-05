@@ -114,7 +114,8 @@ public class OfferSyncManager {
         List<Offer> localOffers = OfferManager.loadOffers(context);
         for (Offer offer : localOffers) {
             UserProfile peer = PeerManager.getPeerById(context, offer.getCreatorId());
-            if (peer != null && !PeerManager.isPeerActive(peer)) {
+            if (peer == null) {
+                Log.d(TAG, "Offers with no corresponding user profile found");
                 continue;
             }
 
@@ -309,25 +310,104 @@ public class OfferSyncManager {
      * @param msg the parsed data message
      */
     public void handleOfferData(ParsedMessage msg) {
+        List<Offer> current = OfferManager.loadOffers(context);
+        String iv = msg.getValue(Protocol.KEY_IV);
+        String ciphertext = msg.getValue(Protocol.KEY_OFA);
+
+        if (iv == null || ciphertext == null) {
+            Log.w(TAG, "Missing IV or ciphertext - skipping frame");
+            return;
+        }
+
+        // Decryption
+        String decrypted;
         try {
-            List<Offer> current = OfferManager.loadOffers(context);
+            decrypted = SecureCrypto.decrypt(ciphertext, iv, userProfile.getMeshId());
+        } catch (Exception e) {
+            Log.e(TAG, "AES/Base64 decrypt failed - frame discarded", e);
+            return;
+        }
 
-            // Decryption
-            String iv = msg.getValue(Protocol.KEY_IV);
-            String ciphertext = msg.getValue(Protocol.KEY_OFA);
-            String decryptedJson = SecureCrypto.decrypt(ciphertext, iv, userProfile.getMeshId());
+        if (decrypted.trim().isEmpty()) {
+            Log.w(TAG, "Decrypted payload empty - skipping");
+            return;
+        }
 
-            JSONArray array = new JSONArray(decryptedJson);
+        boolean parsedOK = false;
+        try {
+            JSONArray array = new JSONArray(decrypted);
             for (int i = 0; i < array.length(); i++) {
-                JSONObject data = array.getJSONObject(i);
-                importOffer(data, current);
+                try {
+                    importOffer(array.getJSONObject(i), current);
+                } catch (JSONException e) {
+                    Log.w(TAG, "Invalid offer (idx " + i + ") - skipped: " + e.getMessage());
+                }
+            }
+            parsedOK = true;
+        } catch (JSONException e) {
+            Log.w(TAG, "JSONArray failed (" + e.getMessage() + ") - switching to fragment parse");
+        }
+
+        // fragment extraction
+        if (!parsedOK) {
+            List<String> fragments = extractJSonObjects(decrypted);
+            int ok = 0, bad = 0;
+            for (String fragment : fragments) {
+                try {
+                    importOffer(new JSONObject(fragment), current);
+                    ok++;
+                } catch (JSONException e) {
+                    bad++;
+                }
+            }
+            Log.i(TAG, "Recovered " + ok + "valid offer(s), skipped " + bad);
+            if (ok == 0) {
+                return;
+            }
+        }
+
+        OfferManager.saveOffers(context, current);
+        Log.i(TAG, "Saving incoming offer data");
+    }
+
+    /**
+     * Returns a list of substring fragments that look like standalone {...} objects.
+     * Used for extracting JSONObjects of a list containing corrupted data
+     */
+    private List<String> extractJSonObjects(String decrypted) {
+        List<String> fragments = new ArrayList<>();
+        int depth = 0, start = -1;
+        boolean inStringLiteral = false, escapeActive = false;
+
+        for (int i = 0; i < decrypted.length(); i++) {
+            char c = decrypted.charAt(i);
+
+            if (inStringLiteral) {
+                if (escapeActive) {
+                    escapeActive = false;
+                } else if (c == '\\') {
+                    escapeActive = true;
+                } else if (c == '"') {
+                    inStringLiteral = false;
+                }
+                continue;
+            } else if (c == '=') {
+                inStringLiteral = true;
+                continue;
             }
 
-            OfferManager.saveOffers(context, current);
-            Log.i(TAG, "Saving incoming offer data");
-        } catch (JSONException e) {
-            Log.e(TAG, "Failed to handle incoming offer data", e);
+            if (c == '{') {
+                if (depth == 0) start = i;
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0 && start >= 0) {
+                    fragments.add(decrypted.substring(start, i + 1));
+                    start = -1;
+                }
+            }
         }
+        return fragments;
     }
 
     /**

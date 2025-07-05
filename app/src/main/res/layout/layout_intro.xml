@@ -18,7 +18,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingTop="24dp"
-        android:text="Willkommen bei Flurfunk! Mit dieser App kannst du Dinge, die du nicht mehr benötigst, anderen Menschen in deinem Haus zur Verfügung stellen. Wähle einfach eine Kategorie und erstelle ein neues Angebot. Wenn ein Angebot nicht mehr zur Verfügung steht, kannst du es deaktivieren. Die Angebote werden nur in deiner Hausgemeinschaft ausgetauscht. Die Übertragung funktioniert ohne WLAN oder mobile Daten über das LoRa-Funknetz. Du benötigst also einen LoRa-USB-Adapter, den du z. B. bei Digitec oder Amazon erhältst. Kliche 'Weiter' um dein Flurfunk-Profil zu erstellen."
+        android:text="Willkommen bei Flurfunk! Mit dieser App kannst du Dinge, die du nicht mehr benötigst, anderen Menschen in deinem Haus zur Verfügung stellen. Wähle einfach eine Kategorie und erstelle ein neues Angebot. Wenn ein Angebot nicht mehr zur Verfügung steht, kannst du es deaktivieren. Die Angebote werden nur in deiner Hausgemeinschaft und verschlüsselt ausgetauscht. Die Übertragung funktioniert ohne WLAN oder mobile Daten über das LoRa-Funknetz. Du benötigst also einen LoRa-USB-Adapter, den du z. B. bei Digitec oder Amazon erhältst. Klicke 'Weiter' um dein Flurfunk-Profil zu erstellen."
         android:textAlignment="center"
         android:textSize="18sp" />
 
