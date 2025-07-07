@@ -38,6 +38,12 @@
 
 ---
 
+## Disclaimer
+
+This app was developed as part of a project in the Bachelor's degree programme in Computer Science at the University of Basel. It is for demonstration purposes only. The code is provided without guarantee. There is no claim to function, availability and support.
+
+---
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
